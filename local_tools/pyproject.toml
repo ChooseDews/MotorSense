@@ -1,0 +1,23 @@
+[project]
+name = "ble-serial-cli"
+version = "0.1.0"
+description = "Simple BLE serial/NUS client for ESP-IDF NUS-like GATT servers"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "bleak>=0.22.3",
+  "prompt-toolkit>=3.0.48",
+  "pyside6>=6.7.0",
+  "qasync>=0.27.1",
+]
+
+[project.scripts]
+ble-serial = "ble_serial_cli.cli:main"
+ble-serial-gui = "ble_serial_cli.gui:main"
+
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ble_serial_cli"]
