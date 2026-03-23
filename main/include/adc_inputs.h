@@ -21,6 +21,14 @@ bool adc_inputs_init(void);
  */
 bool adc_inputs_read_gpio11_gpio12(int *v11, int *v12);
 
+/**
+ * Reads the two analog inputs currently wired to GPIO9/GPIO10.
+ *
+ * On ESP32-S3 these are ADC1 CH8/CH9.
+ * Returns true on success.
+ */
+bool adc_inputs_read_gpio9_gpio10(int *v9, int *v10);
+
 #ifdef __cplusplus
 }
 #endif

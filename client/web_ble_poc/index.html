@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MotorSense BLE Serial (Web Bluetooth POC)</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
+      .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+      button { padding: 8px 12px; }
+      input[type="text"] { padding: 8px; width: min(720px, 100%); }
+      textarea { width: 100%; height: 340px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      fieldset { border: 1px solid #ccc; padding: 10px; }
+      legend { padding: 0 6px; }
+      .muted { color: #555; }
+      .pill { display: inline-block; padding: 2px 8px; border: 1px solid #bbb; border-radius: 999px; font-size: 12px; }
+      .spacer { height: 8px; }
+      .encoder { display: flex; gap: 12px; align-items: center; }
+      .encoder input[type="range"] { width: min(720px, 100%); }
+      .dial-wrap { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+      canvas { border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+      .small { font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <h2>BLE Serial (NUS-like) — Web Bluetooth POC</h2>
+    <div class="row small muted">
+      <span class="pill">Chrome/Edge only</span>
+      <span class="pill">HTTPS or localhost required</span>
+      <span class="pill">Uses Nordic UART UUIDs</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <fieldset>
+      <legend>Connection</legend>
+      <div class="row">
+        <button id="btnConnect">Connect…</button>
+        <button id="btnDisconnect" disabled>Disconnect</button>
+        <span id="status" class="pill">Not connected</span>
+      </div>
+      <div class="spacer"></div>
+      <div class="row small">
+        <label><input type="checkbox" id="chkMotorSense" checked /> Prefer name prefix “MotorSense”</label>
+        <label><input type="checkbox" id="chkAcceptAll" /> Accept all devices (no name filter)</label>
+      </div>
+      <div class="spacer"></div>
+      <div class="row small muted">
+        If you have trouble discovering the device, try <b>Accept all devices</b> and pick it from the browser chooser.
+      </div>
+    </fieldset>
+
+    <div class="spacer"></div>
+
+    <fieldset>
+      <legend>Encoder</legend>
+      <div class="dial-wrap">
+        <canvas id="encDial" width="220" height="220" aria-label="Encoder dial"></canvas>
+        <div style="min-width: 180px;">
+          <div id="encValue"><b>ENC pos:</b> —</div>
+          <div id="encRange" class="small muted">Range: ±10</div>
+          <div class="spacer"></div>
+          <div class="small muted">Bar:</div>
+          <input id="encBar" type="range" min="-10" max="10" value="0" disabled />
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="spacer"></div>
+
+    <fieldset>
+      <legend>Presets</legend>
+      <div class="row">
+        <button class="preset" data-cmd="HELP">HELP</button>
+        <button class="preset" data-cmd="PING">PING</button>
+        <button class="preset" data-cmd="PING ALL">PING ALL</button>
+        <button class="preset" data-cmd="STATUS">STATUS</button>
+        <button class="preset" data-cmd="LED DANCE">LED DANCE</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="row small">
+        <label>LED R <input id="ledR" type="number" min="0" max="255" value="0" style="width:90px" /></label>
+        <label>G <input id="ledG" type="number" min="0" max="255" value="0" style="width:90px" /></label>
+        <label>B <input id="ledB" type="number" min="0" max="255" value="0" style="width:90px" /></label>
+        <button id="btnLed">Send LED</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="row small">
+        <label>Motor dir
+          <select id="motorDir">
+            <option value="S">S</option>
+            <option value="F">F</option>
+            <option value="B">B</option>
+          </select>
+        </label>
+        <label>Duty%
+          <input id="motorDuty" type="number" min="0" max="100" value="30" style="width:90px" />
+        </label>
+        <label>Sec
+          <input id="motorSec" type="number" min="0" max="60" step="0.5" value="1" style="width:90px" />
+        </label>
+        <button id="btnMotor">Send MOTOR</button>
+        <button id="btnFwd">Forward</button>
+        <button id="btnBack">Backward</button>
+        <button id="btnStop">STOP</button>
+      </div>
+    </fieldset>
+
+    <div class="spacer"></div>
+
+    <fieldset>
+      <legend>Command</legend>
+      <div class="row">
+        <input id="cmd" type="text" placeholder="Type command (e.g., PING)" />
+        <button id="btnSend">Send</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="row small muted">Commands are sent newline-terminated to RX; TX notifications are appended to the log.</div>
+    </fieldset>
+
+    <div class="spacer"></div>
+
+    <fieldset>
+      <legend>Log</legend>
+      <textarea id="log" readonly spellcheck="false"></textarea>
+      <div class="row">
+        <button id="btnClear">Clear</button>
+      </div>
+    </fieldset>
+
+    <script>
+      // Nordic UART Service (NUS) UUIDs
+      const NUS_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      const NUS_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // write
+      const NUS_TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // notify
+
+      const els = {
+        btnConnect: document.getElementById("btnConnect"),
+        btnDisconnect: document.getElementById("btnDisconnect"),
+        status: document.getElementById("status"),
+        chkMotorSense: document.getElementById("chkMotorSense"),
+        chkAcceptAll: document.getElementById("chkAcceptAll"),
+        log: document.getElementById("log"),
+        btnClear: document.getElementById("btnClear"),
+        cmd: document.getElementById("cmd"),
+        btnSend: document.getElementById("btnSend"),
+        encValue: document.getElementById("encValue"),
+        encRange: document.getElementById("encRange"),
+        encBar: document.getElementById("encBar"),
+        encDial: document.getElementById("encDial"),
+        ledR: document.getElementById("ledR"),
+        ledG: document.getElementById("ledG"),
+        ledB: document.getElementById("ledB"),
+        btnLed: document.getElementById("btnLed"),
+        motorDir: document.getElementById("motorDir"),
+        motorDuty: document.getElementById("motorDuty"),
+        motorSec: document.getElementById("motorSec"),
+        btnMotor: document.getElementById("btnMotor"),
+        btnFwd: document.getElementById("btnFwd"),
+        btnBack: document.getElementById("btnBack"),
+        btnStop: document.getElementById("btnStop"),
+      };
+
+      let device = null;
+      let server = null;
+      let rxChar = null;
+      let txChar = null;
+
+      const decoder = new TextDecoder("utf-8");
+      const encoder = new TextEncoder();
+
+      let incomingBuf = "";
+      const encRe = /\bENC\s+pos\s*=\s*(-?\d+)\b/;
+      let encMaxAbs = 10;
+
+      const dial = {
+        ctx: els.encDial.getContext("2d"),
+        w: els.encDial.width,
+        h: els.encDial.height,
+      };
+
+      function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+      }
+
+      function drawDial(pos) {
+        const ctx = dial.ctx;
+        if (!ctx) return;
+
+        const w = dial.w;
+        const h = dial.h;
+        ctx.clearRect(0, 0, w, h);
+
+        const cx = w / 2;
+        const cy = h / 2;
+        const r = Math.min(w, h) * 0.42;
+
+        // Map [-encMaxAbs, +encMaxAbs] to a 270° sweep (from -135° to +135°)
+        const start = (-135 * Math.PI) / 180;
+        const end = (135 * Math.PI) / 180;
+        const t = (pos + encMaxAbs) / (2 * encMaxAbs);
+        const angle = start + clamp(t, 0, 1) * (end - start);
+
+        // Outer arc
+        ctx.lineWidth = 10;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#e6e6e6";
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, start, end, false);
+        ctx.stroke();
+
+        // Value arc
+        ctx.strokeStyle = "#2b6cb0";
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, start, angle, false);
+        ctx.stroke();
+
+        // Tick marks (5 major ticks)
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#777";
+        ctx.fillStyle = "#333";
+        ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+
+        const tickCount = 5;
+        for (let i = 0; i < tickCount; i++) {
+          const u = i / (tickCount - 1);
+          const a = start + u * (end - start);
+          const x1 = cx + Math.cos(a) * (r - 2);
+          const y1 = cy + Math.sin(a) * (r - 2);
+          const x2 = cx + Math.cos(a) * (r + 10);
+          const y2 = cy + Math.sin(a) * (r + 10);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+
+          const labelVal = Math.round((-encMaxAbs) + u * (2 * encMaxAbs));
+          const lx = cx + Math.cos(a) * (r + 26);
+          const ly = cy + Math.sin(a) * (r + 26);
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(labelVal), lx, ly);
+        }
+
+        // Needle
+        const nx = cx + Math.cos(angle) * (r + 4);
+        const ny = cy + Math.sin(angle) * (r + 4);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#111";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(nx, ny);
+        ctx.stroke();
+
+        // Center knob
+        ctx.fillStyle = "#111";
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Title
+        ctx.fillStyle = "#333";
+        ctx.font = "13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("ENC", cx, cy + 26);
+      }
+
+      function logLine(s) {
+        els.log.value += s;
+        if (!s.endsWith("\n")) els.log.value += "\n";
+        els.log.scrollTop = els.log.scrollHeight;
+      }
+
+      function setStatus(s, connected) {
+        els.status.textContent = s;
+        els.btnDisconnect.disabled = !connected;
+      }
+
+      function updateEncoder(pos) {
+        els.encValue.innerHTML = `<b>ENC pos:</b> ${pos}`;
+        const absPos = Math.abs(pos);
+        const newMax = Math.max(encMaxAbs, absPos, 1);
+        if (newMax !== encMaxAbs) {
+          encMaxAbs = newMax;
+          els.encBar.min = String(-encMaxAbs);
+          els.encBar.max = String(encMaxAbs);
+          els.encRange.textContent = `Range: ±${encMaxAbs}`;
+        }
+        els.encBar.value = String(pos);
+        drawDial(pos);
+      }
+
+      function handleIncomingText(text) {
+        // append to log
+        els.log.value += text;
+        els.log.scrollTop = els.log.scrollHeight;
+
+        // parse line-oriented encoder updates
+        incomingBuf += text;
+        while (incomingBuf.includes("\n")) {
+          const idx = incomingBuf.indexOf("\n");
+          const line = incomingBuf.slice(0, idx).replace(/\r$/, "");
+          incomingBuf = incomingBuf.slice(idx + 1);
+
+          const m = encRe.exec(line);
+          if (m) {
+            const pos = parseInt(m[1], 10);
+            if (!Number.isNaN(pos)) updateEncoder(pos);
+          }
+        }
+      }
+
+      async function connect() {
+        if (!navigator.bluetooth) {
+          alert("Web Bluetooth not available in this browser.");
+          return;
+        }
+
+        const acceptAll = els.chkAcceptAll.checked;
+        const preferMotorSense = els.chkMotorSense.checked;
+
+        const options = {
+          optionalServices: [NUS_SERVICE_UUID],
+        };
+
+        if (acceptAll) {
+          options.acceptAllDevices = true;
+        } else if (preferMotorSense) {
+          options.filters = [{ namePrefix: "MotorSense" }];
+        } else {
+          // If no name filter, still require the service in the chooser when possible.
+          options.filters = [{ services: [NUS_SERVICE_UUID] }];
+        }
+
+        logLine("[BLE] requestDevice…");
+        device = await navigator.bluetooth.requestDevice(options);
+        device.addEventListener("gattserverdisconnected", onDisconnected);
+
+        logLine(`[BLE] selected: ${device.name || "(unknown)"}`);
+        setStatus("Connecting…", false);
+
+        server = await device.gatt.connect();
+        const service = await server.getPrimaryService(NUS_SERVICE_UUID);
+
+        rxChar = await service.getCharacteristic(NUS_RX_UUID);
+        txChar = await service.getCharacteristic(NUS_TX_UUID);
+
+        await txChar.startNotifications();
+        txChar.addEventListener("characteristicvaluechanged", (ev) => {
+          const dv = ev.target.value;
+          const bytes = new Uint8Array(dv.buffer);
+          const text = decoder.decode(bytes);
+          handleIncomingText(text);
+        });
+
+        setStatus("Connected", true);
+        logLine("[BLE] connected + notifications started");
+      }
+
+      async function disconnect() {
+        try {
+          if (txChar) {
+            try { await txChar.stopNotifications(); } catch (_) {}
+          }
+        } finally {
+          if (device && device.gatt && device.gatt.connected) {
+            device.gatt.disconnect();
+          }
+        }
+      }
+
+      function onDisconnected() {
+        logLine("[BLE] disconnected");
+        setStatus("Not connected", false);
+        server = null;
+        rxChar = null;
+        txChar = null;
+      }
+
+      async function sendLine(line) {
+        if (!rxChar) {
+          logLine("[ERR] Not connected");
+          return;
+        }
+        const payload = encoder.encode(line + "\n");
+
+        // Prefer write-without-response when available.
+        const props = rxChar.properties || {};
+        if (props.writeWithoutResponse && rxChar.writeValueWithoutResponse) {
+          await rxChar.writeValueWithoutResponse(payload);
+        } else {
+          await rxChar.writeValue(payload);
+        }
+      }
+
+      // UI wiring
+      els.btnConnect.addEventListener("click", async () => {
+        try {
+          await connect();
+        } catch (e) {
+          logLine(`[ERR] Connect failed: ${e}`);
+          setStatus("Not connected", false);
+        }
+      });
+
+      els.btnDisconnect.addEventListener("click", async () => {
+        try {
+          await disconnect();
+        } catch (e) {
+          logLine(`[ERR] Disconnect failed: ${e}`);
+        }
+      });
+
+      els.btnClear.addEventListener("click", () => {
+        els.log.value = "";
+      });
+
+      els.btnSend.addEventListener("click", async () => {
+        const line = els.cmd.value.trim();
+        if (!line) return;
+        logLine(`> ${line}`);
+        els.cmd.value = "";
+        try {
+          await sendLine(line);
+        } catch (e) {
+          logLine(`[ERR] Send failed: ${e}`);
+        }
+      });
+
+      els.cmd.addEventListener("keydown", async (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          els.btnSend.click();
+        }
+      });
+
+      document.querySelectorAll("button.preset").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const cmd = b.getAttribute("data-cmd");
+          if (!cmd) return;
+          logLine(`> ${cmd}`);
+          try {
+            await sendLine(cmd);
+          } catch (e) {
+            logLine(`[ERR] Send failed: ${e}`);
+          }
+        });
+      });
+
+      els.btnLed.addEventListener("click", async () => {
+        const r = Math.max(0, Math.min(255, parseInt(els.ledR.value, 10) || 0));
+        const g = Math.max(0, Math.min(255, parseInt(els.ledG.value, 10) || 0));
+        const b = Math.max(0, Math.min(255, parseInt(els.ledB.value, 10) || 0));
+        const cmd = `LED ${r} ${g} ${b}`;
+        logLine(`> ${cmd}`);
+        try {
+          await sendLine(cmd);
+        } catch (e) {
+          logLine(`[ERR] Send failed: ${e}`);
+        }
+      });
+
+      els.btnMotor.addEventListener("click", async () => {
+        const d = (els.motorDir.value || "S").toUpperCase();
+        const duty = Math.max(0, Math.min(100, parseInt(els.motorDuty.value, 10) || 0));
+        const sec = parseFloat(els.motorSec.value);
+        const cmd = (sec && sec > 0) ? `MOTOR ${d} ${duty} ${sec}` : `MOTOR ${d} ${duty}`;
+        logLine(`> ${cmd}`);
+        try {
+          await sendLine(cmd);
+        } catch (e) {
+          logLine(`[ERR] Send failed: ${e}`);
+        }
+      });
+
+      async function sendMotorDir(dir) {
+        const duty = Math.max(0, Math.min(100, parseInt(els.motorDuty.value, 10) || 0));
+        const sec = parseFloat(els.motorSec.value);
+        const d = (dir || "S").toUpperCase();
+        const cmd = (sec && sec > 0) ? `MOTOR ${d} ${duty} ${sec}` : `MOTOR ${d} ${duty}`;
+        logLine(`> ${cmd}`);
+        await sendLine(cmd);
+      }
+
+      els.btnFwd.addEventListener("click", async () => {
+        try {
+          await sendMotorDir("F");
+        } catch (e) {
+          logLine(`[ERR] Send failed: ${e}`);
+        }
+      });
+
+      els.btnBack.addEventListener("click", async () => {
+        try {
+          await sendMotorDir("B");
+        } catch (e) {
+          logLine(`[ERR] Send failed: ${e}`);
+        }
+      });
+
+      els.btnStop.addEventListener("click", async () => {
+        const cmd = "MOTOR S";
+        logLine(`> ${cmd}`);
+        try {
+          await sendLine(cmd);
+        } catch (e) {
+          logLine(`[ERR] Send failed: ${e}`);
+        }
+      });
+
+      // Initial status
+      setStatus("Not connected", false);
+      logLine("[Ready] Click Connect… (requires localhost or HTTPS)");
+      drawDial(0);
+    </script>
+  </body>
+</html>

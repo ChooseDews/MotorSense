@@ -1,9 +1,11 @@
 import asyncio
+import logging
+import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 from bleak import BleakClient, BleakScanner
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from qasync import QEventLoop, asyncSlot
 
 # Nordic UART Service (NUS) UUIDs in canonical string form.
@@ -32,11 +34,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self._rx_uuid = _normalize_uuid(NUS_RX_UUID)
         self._tx_uuid = _normalize_uuid(NUS_TX_UUID)
         self._devices: list[DiscoveredDevice] = []
+        self._ble_device_by_address: dict[str, Any] = {}
 
         # Hidden default filter (per request)
         self._name_filter = "MotorSense"
 
         self._busy = False
+
+        # Encoder display state
+        self._enc_re = re.compile(r"\bENC\s+pos\s*=\s*(-?\d+)\b")
+        self._enc_max_abs: int = 10
+        self._incoming_buf: str = ""
+
+        self._setup_logging()
 
         self._history: list[str] = []
         self._hist_idx: int = 0
@@ -88,6 +98,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setReadOnly(True)
         log_box.addWidget(self.log, 1)
+
+        enc_box = QtWidgets.QGroupBox("Encoder")
+        root.addWidget(enc_box)
+        enc = QtWidgets.QHBoxLayout(enc_box)
+        self.enc_value = QtWidgets.QLabel("ENC pos: —")
+        enc.addWidget(self.enc_value)
+        self.enc_range = QtWidgets.QLabel("Range: ±10")
+        enc.addWidget(self.enc_range)
+        self.enc_bar = QtWidgets.QProgressBar()
+        self.enc_bar.setRange(-self._enc_max_abs, self._enc_max_abs)
+        self.enc_bar.setValue(0)
+        self.enc_bar.setTextVisible(False)
+        enc.addWidget(self.enc_bar, 1)
 
         cmd_row = QtWidgets.QHBoxLayout()
         root.addLayout(cmd_row)
@@ -171,6 +194,31 @@ class MainWindow(QtWidgets.QMainWindow):
         # Auto-scan + auto-connect on launch
         QtCore.QTimer.singleShot(0, self.on_auto_connect)
 
+    def _setup_logging(self) -> None:
+        class _GuiLogHandler(logging.Handler):
+            def __init__(self, emit_fn) -> None:
+                super().__init__()
+                self._emit_fn = emit_fn
+
+            def emit(self, record: logging.LogRecord) -> None:
+                try:
+                    msg = self.format(record)
+                except Exception:
+                    msg = record.getMessage()
+                QtCore.QTimer.singleShot(0, lambda m=msg: self._emit_fn(m + "\n"))
+
+        root_logger = logging.getLogger()
+        if not any(isinstance(h, _GuiLogHandler) for h in root_logger.handlers):
+            h = _GuiLogHandler(self.append_log)
+            h.setLevel(logging.INFO)
+            h.setFormatter(logging.Formatter("[%(name)s] %(message)s"))
+            root_logger.addHandler(h)
+            root_logger.setLevel(logging.INFO)
+
+        # Bleak + CoreBluetooth diagnostics (can help explain "Failed to connect").
+        logging.getLogger("bleak").setLevel(logging.DEBUG)
+        logging.getLogger("bleak.backends").setLevel(logging.DEBUG)
+
     def closeEvent(self, event) -> None:  # type: ignore[override]
         # Best-effort disconnect; don't block window close.
         asyncio.create_task(self._disconnect())
@@ -187,9 +235,38 @@ class MainWindow(QtWidgets.QMainWindow):
         return super().eventFilter(obj, event)
 
     def append_log(self, text: str) -> None:
-        self.log.moveCursor(QtWidgets.QTextCursor.End)
+        self.log.moveCursor(QtGui.QTextCursor.End)
         self.log.insertPlainText(text)
-        self.log.moveCursor(QtWidgets.QTextCursor.End)
+        self.log.moveCursor(QtGui.QTextCursor.End)
+
+    def _handle_incoming_text(self, text: str) -> None:
+        self.append_log(text)
+
+        # Parse line-oriented output for encoder updates.
+        self._incoming_buf += text
+        while "\n" in self._incoming_buf:
+            line, self._incoming_buf = self._incoming_buf.split("\n", 1)
+            line = line.rstrip("\r")
+            self._maybe_update_encoder_from_line(line)
+
+    def _maybe_update_encoder_from_line(self, line: str) -> None:
+        m = self._enc_re.search(line)
+        if not m:
+            return
+        try:
+            pos = int(m.group(1))
+        except Exception:
+            return
+        self._update_encoder(pos)
+
+    def _update_encoder(self, pos: int) -> None:
+        self.enc_value.setText(f"ENC pos: {pos}")
+        max_abs = max(self._enc_max_abs, abs(pos), 1)
+        if max_abs != self._enc_max_abs:
+            self._enc_max_abs = max_abs
+            self.enc_bar.setRange(-max_abs, max_abs)
+            self.enc_range.setText(f"Range: ±{max_abs}")
+        self.enc_bar.setValue(pos)
 
     def _log_error(self, msg: str) -> None:
         self.append_log(f"\n[{msg}]\n")
@@ -220,6 +297,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         needle = (name_contains or "").strip().lower()
         out: list[DiscoveredDevice] = []
+        by_addr: dict[str, Any] = {}
         for d in devices:
             name = d.name or "(unknown)"
             if needle and needle not in name.lower():
@@ -233,21 +311,61 @@ class MainWindow(QtWidgets.QMainWindow):
 
             rssi = getattr(d, "rssi", None)
             out.append(DiscoveredDevice(name=name, address=d.address, rssi=rssi, advertises_nus=advertises_nus))
+            by_addr[d.address] = d
 
         out.sort(key=lambda x: (not x.advertises_nus, x.name.lower(), x.address))
+
+        # Save the underlying BLEDevice objects for reliable connections.
+        self._ble_device_by_address = by_addr
         return out
 
     async def _connect(self, address: str) -> None:
         await self._disconnect()
 
+        self.append_log(f"[BLE] connect -> {address}\n")
+
+        # Resolve a fresh device object (more reliable on macOS than reusing stale scan results).
+        resolved = None
+        try:
+            resolved = await BleakScanner.find_device_by_address(address, timeout=8.0)
+        except Exception as e:
+            self.append_log(f"[BLE] find_device_by_address error: {e}\n")
+
+        if resolved is None:
+            # Fall back to last scan result, if we have it.
+            resolved = self._ble_device_by_address.get(address)
+
+        if resolved is None:
+            raise RuntimeError("Device not resolvable (not found)")
+
+        def on_disconnected(_client: BleakClient) -> None:
+            QtCore.QTimer.singleShot(0, lambda: self.append_log("\n[BLE] disconnected\n"))
+
         def on_notify(_, data: bytearray) -> None:
             text = bytes(data).decode("utf-8", errors="replace")
             # Ensure UI update happens on Qt thread.
-            QtCore.QTimer.singleShot(0, lambda t=text: self.append_log(t))
+            QtCore.QTimer.singleShot(0, lambda t=text: self._handle_incoming_text(t))
 
-        client = BleakClient(address)
-        ok = await client.connect()
-        if not ok or not client.is_connected:
+        client = BleakClient(resolved, disconnected_callback=on_disconnected)
+
+        last_exc: Optional[BaseException] = None
+        for attempt in range(1, 4):
+            try:
+                ok = await client.connect(timeout=20.0)
+                if ok and client.is_connected:
+                    break
+            except Exception as e:
+                last_exc = e
+            self.append_log(f"[BLE] connect attempt {attempt} failed; retrying...\n")
+            await asyncio.sleep(0.6)
+
+        if not client.is_connected:
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            if last_exc is not None:
+                raise RuntimeError(f"Connect exception") from last_exc
             raise RuntimeError("Failed to connect")
 
         await client.start_notify(self._tx_uuid, on_notify)

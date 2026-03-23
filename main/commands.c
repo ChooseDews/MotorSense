@@ -28,6 +28,10 @@
 #include "can_iface.h"
 #include "can_rpc.h"
 #include "quadrature_encoder.h"
+#include "adc_inputs.h"
+
+// Forward declarations
+static void adc_stream_task_fn(void *arg);
 
 #define TAG "COMMANDS"
 
@@ -78,6 +82,10 @@ typedef enum {
 
 static motor_state_t s_motor_state = MOTOR_STOP;
 static uint8_t s_motor_duty_percent = 100;
+
+// ADC Streaming for debugging
+static bool s_adc_stream_enabled = false;
+static TaskHandle_t s_adc_stream_task = NULL;
 
 static SemaphoreHandle_t s_motor_mutex;
 static esp_timer_handle_t s_motor_stop_timer;
@@ -391,6 +399,43 @@ static bool parse_rgb_space_separated(const char *s, uint8_t *r, uint8_t *g, uin
     return true;
 }
 
+// ADC streaming task for real-time debugging
+static void adc_stream_task_fn(void *arg)
+{
+    (void)arg;
+    
+    if (!adc_inputs_init()) {
+        ESP_LOGE(TAG, "ADC stream: init failed");
+        s_adc_stream_enabled = false;
+        vTaskDelete(NULL);
+        return;
+    }
+    
+    ESP_LOGI(TAG, "ADC stream started");
+    
+    while (s_adc_stream_enabled) {
+        int v9 = 0, v10 = 0, v11 = 0, v12 = 0;
+        
+        // Read both encoder ADC pairs
+        adc_inputs_read_gpio9_gpio10(&v9, &v10);
+        adc_inputs_read_gpio11_gpio12(&v11, &v12);
+        
+        // Format: ADC <timestamp_us> <gpio9> <gpio10> <gpio11> <gpio12>
+        int64_t ts = esp_timer_get_time();
+        
+        // Output directly to stdout/serial
+        printf("ADC %lld %d %d %d %d\n", ts, v9, v10, v11, v12);
+        
+        // Stream at 4kHz to match encoder sampling rate
+        // No delay - run as fast as possible for maximum resolution
+        taskYIELD();
+    }
+    
+    ESP_LOGI(TAG, "ADC stream stopped");
+    s_adc_stream_task = NULL;
+    vTaskDelete(NULL);
+}
+
 void commands_init(void)
 {
     s_led_dance_task = NULL;
@@ -570,7 +615,8 @@ static void send_status(commands_reply_fn reply)
         "BLE: joinable=%d connected=%d notify=%d conn_id=%u\n"
         "MOTOR: dir=%s duty=%u%%\n"
         "USER_LED: mode=%s rgb=%u %u %u\n"
-        "ENCODER: mode=ADC_PHASE gpio_a=%d gpio_b=%d pos=%ld\n"
+        "ENCODER0: mode=ADC_PHASE gpio_a=%d gpio_b=%d pos=%ld\n"
+        "ENCODER1: mode=ADC_PHASE gpio_a=%d gpio_b=%d pos=%ld\n"
         "INDICATOR: state=%s activity=%d (%ums)\n"
         "ESP: uptime=%us heap_free=%u heap_min=%u reset_reason=%d\n"
         "ESP: idf=%s chip_model=%d cores=%d rev=%d mac_sta=%02X:%02X:%02X:%02X:%02X:%02X\n",
@@ -586,7 +632,10 @@ static void send_status(commands_reply_fn reply)
         (unsigned)s_user_led_b,
         11,
         12,
-        (long)quadrature_encoder_get_position(),
+        (long)quadrature_encoder_get_position_index(0),
+        9,
+        10,
+        (long)quadrature_encoder_get_position_index(1),
         indicator_state_to_str(s_indicator_state),
         activity ? 1 : 0,
         (unsigned)activity_ms_left,
@@ -672,6 +721,9 @@ void commands_handle_line(char *line, commands_reply_fn reply)
             "  M F|B|S [duty_percent] [seconds]\n"
             "  LED R G B\n"
             "  LED DANCE\n"
+            "  ENCODER <0|1> [INVERT 0|1]\n"
+            "  ENCODER STATS\n"
+            "  ADC STREAM [START|STOP]\n"
             "  ID\n"
             "  ID SET <id>\n"
             "  ID RUN CMD <id> <command...>\n"
@@ -1034,6 +1086,93 @@ void commands_handle_line(char *line, commands_reply_fn reply)
         }
 
         reply("OK\n");
+        return;
+    }
+
+    // ENCODER <0|1> [INVERT 0|1] - Get or set encoder inversion
+    // ENCODER STATS - Get encoder performance statistics
+    if (strncasecmp(line, "ENCODER ", 8) == 0) {
+        const char *args = line + 8;
+        
+        // Check for STATS command first
+        if (strcasecmp(args, "STATS") == 0) {
+            uint32_t samples = 0;
+            uint32_t overflows = 0;
+            quadrature_encoder_get_stats(&samples, &overflows);
+            
+            char buf[256];
+            snprintf(buf, sizeof(buf), 
+                     "ENCODER STATS: samples=%lu overflows=%lu (%.3f%%)\n",
+                     (unsigned long)samples,
+                     (unsigned long)overflows,
+                     samples > 0 ? (100.0 * overflows / samples) : 0.0);
+            reply(buf);
+            return;
+        }
+        
+        int enc_idx = -1;
+        char subcmd[32] = {0};
+        int invert_val = -1;
+
+        // Parse: ENCODER <0|1> or ENCODER <0|1> INVERT <0|1>
+        int n = sscanf(args, "%d %31s %d", &enc_idx, subcmd, &invert_val);
+
+        if (enc_idx < 0 || enc_idx > 1) {
+            reply("ERR encoder index must be 0 or 1\n");
+            return;
+        }
+
+        if (n == 1) {
+            // Get current state
+            bool inv = quadrature_encoder_get_invert((uint8_t)enc_idx);
+            int32_t pos = quadrature_encoder_get_position_index((uint8_t)enc_idx);
+            char buf[128];
+            snprintf(buf, sizeof(buf), "ENCODER %d: pos=%ld invert=%d\n", enc_idx, (long)pos, inv ? 1 : 0);
+            reply(buf);
+        } else if (n >= 2 && strcasecmp(subcmd, "INVERT") == 0) {
+            if (invert_val < 0 || invert_val > 1) {
+                reply("ERR invert must be 0 or 1\n");
+                return;
+            }
+            quadrature_encoder_set_invert((uint8_t)enc_idx, invert_val != 0);
+            char buf[64];
+            snprintf(buf, sizeof(buf), "OK encoder %d invert=%d\n", enc_idx, invert_val);
+            reply(buf);
+        } else {
+            reply("ERR usage: ENCODER <0|1> [INVERT 0|1]\n");
+        }
+        return;
+    }
+
+    // ADC STREAM [START|STOP] - Stream raw ADC values for debugging
+    if (strncasecmp(line, "ADC STREAM", 10) == 0) {
+        const char *args = line + 10;
+        while (isspace((unsigned char)*args)) args++;
+        
+        if (strcasecmp(args, "START") == 0) {
+            if (s_adc_stream_enabled) {
+                reply("ADC stream already running\n");
+                return;
+            }
+            s_adc_stream_enabled = true;
+            xTaskCreate(adc_stream_task_fn, "adc_stream", 4096, NULL, 18, &s_adc_stream_task);
+            reply("OK ADC stream started\n");
+        } else if (strcasecmp(args, "STOP") == 0) {
+            if (!s_adc_stream_enabled) {
+                reply("ADC stream not running\n");
+                return;
+            }
+            s_adc_stream_enabled = false;
+            if (s_adc_stream_task) {
+                vTaskDelete(s_adc_stream_task);
+                s_adc_stream_task = NULL;
+            }
+            reply("OK ADC stream stopped\n");
+        } else if (strlen(args) == 0) {
+            reply(s_adc_stream_enabled ? "ADC stream: RUNNING\n" : "ADC stream: STOPPED\n");
+        } else {
+            reply("ERR usage: ADC STREAM [START|STOP]\n");
+        }
         return;
     }
 

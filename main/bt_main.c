@@ -120,6 +120,7 @@ static StreamBufferHandle_t s_rx_stream;
 static TaskHandle_t s_process_task;
 
 static TaskHandle_t s_ble_adc_task;
+static TaskHandle_t s_ble_enc_task;
 
 typedef struct {
     uint32_t count;
@@ -351,11 +352,11 @@ static void ble_adc_task_fn(void *arg)
         return;
     }
 
-    // Sample over a 0.5s window, then print stats.
-    // Keep sampling modest to reduce CPU impact and BLE spam.
-    const TickType_t report_period_ticks = pdMS_TO_TICKS(500);
-    const uint32_t samples_per_period = 64;
-    const TickType_t sample_delay_ticks = pdMS_TO_TICKS(500 / samples_per_period);
+    // Sample over a window, then print stats (ESP_LOGI only; no BLE output).
+    // Keep sampling very modest to avoid impacting the encoder task.
+    const TickType_t report_period_ticks = pdMS_TO_TICKS(2000);
+    const uint32_t samples_per_period = 16;
+    const TickType_t sample_delay_ticks = pdMS_TO_TICKS(2000 / samples_per_period);
     const TickType_t min_sample_delay_ticks = (sample_delay_ticks == 0) ? 1 : sample_delay_ticks;
 
     adc_stats_t s11;
@@ -393,24 +394,45 @@ static void ble_adc_task_fn(void *arg)
             var12 = s12.m2 / (double)(s12.count - 1);
         }
 
-        char out[160];
-        // Raw ADC counts (unitless). Mean/variance over the last 0.5s sample window.
-        snprintf(out,
-                 sizeof(out),
-                 "ADC11 last=%d avg=%.1f var=%.1f | ADC12 last=%d avg=%.1f var=%.1f\n",
-                 s11.last,
-                 s11.mean,
-                 var11,
-                 s12.last,
-                 s12.mean,
-                 var12);
-        ble_uart_send_str(out);
+        // Raw ADC counts (unitless). Mean/variance over the last sample window.
+        ESP_LOGI(TAG,
+             "ADC11 last=%d avg=%.1f var=%.1f | ADC12 last=%d avg=%.1f var=%.1f",
+             s11.last,
+             s11.mean,
+             var11,
+             s12.last,
+             s12.mean,
+             var12);
 
         // Keep overall period close to 0.5s even if sampling overruns slightly.
         TickType_t elapsed = xTaskGetTickCount() - start;
         if (elapsed < report_period_ticks) {
             vTaskDelay(report_period_ticks - elapsed);
         }
+    }
+}
+
+static void ble_enc_task_fn(void *arg)
+{
+    (void)arg;
+
+    int32_t last_sent0 = INT32_MIN;
+    int32_t last_sent1 = INT32_MIN;
+    const TickType_t period = pdMS_TO_TICKS(50); // <= 20Hz updates
+
+    while (true) {
+        if (s_connected && s_tx_notify_enabled && s_ble_reply_queue != NULL) {
+            const int32_t pos0 = quadrature_encoder_get_position_index(0);
+            const int32_t pos1 = quadrature_encoder_get_position_index(1);
+            if (pos0 != last_sent0 || pos1 != last_sent1) {
+                char out[64];
+                snprintf(out, sizeof(out), "ENC pos0=%ld pos1=%ld\n", (long)pos0, (long)pos1);
+                ble_uart_send_str(out);
+                last_sent0 = pos0;
+                last_sent1 = pos1;
+            }
+        }
+        vTaskDelay(period);
     }
 }
 
@@ -667,6 +689,9 @@ void app_main(void)
         xTaskCreate(ble_reply_task_fn, "ble_reply", 3072, NULL, 5, &s_ble_reply_task);
     }
 
+    // Periodic encoder position output over BLE
+    xTaskCreate(ble_enc_task_fn, "ble_enc", 3072, NULL, 5, &s_ble_enc_task);
+
     // Command execution task (keeps heavy command parsing off the BLE RX task stack).
     s_ble_cmd_queue = xQueueCreate(BLE_CMD_QUEUE_SIZE, BLE_CMD_MAX_LEN);
     if (s_ble_cmd_queue == NULL) {
@@ -687,7 +712,7 @@ void app_main(void)
     // Create button task
     xTaskCreate(ble_button_task_fn, "ble_button", 4096, NULL, 5, NULL);
 
-    // Periodic ADC stats output over BLE (GPIO11/GPIO12)
+    // Periodic ADC stats (ESP_LOGI only; no BLE output)
     xTaskCreate(ble_adc_task_fn, "ble_adc", 4096, NULL, 5, &s_ble_adc_task);
 
     // BLE-only targets should release Classic BT memory.

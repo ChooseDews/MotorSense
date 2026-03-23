@@ -9,11 +9,16 @@ dependencies = [
   "prompt-toolkit>=3.0.48",
   "pyside6>=6.7.0",
   "qasync>=0.27.1",
+  "pyserial>=3.5",
+  "pyqtgraph>=0.13.0",
+  "numpy>=1.24.0",
+  "PyQt5>=5.15.0",
 ]
 
 [project.scripts]
 ble-serial = "ble_serial_cli.cli:main"
 ble-serial-gui = "ble_serial_cli.gui:main"
+adc-plotter = "adc_plotter:main"
 
 [build-system]
 requires = ["hatchling>=1.25.0"]

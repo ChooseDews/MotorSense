@@ -35,6 +35,12 @@ Exit the session with `/exit`.
 
 The prompt supports command history (Up/Down arrows) and persists history to `~/.ble-serial-history`.
 
+## Web Bluetooth (HTML5) POC
+
+There is also a browser-based proof-of-concept that uses Chrome/Edge Web Bluetooth:
+
+- See [web_ble_poc/README.md](web_ble_poc/README.md)
+
 ### Options
 
 - `uv run ble-serial --scan-timeout 8`
