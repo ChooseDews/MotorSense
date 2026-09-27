@@ -14,6 +14,10 @@ To run the GUI:
 - `cd local_tools`
 - `uv run ble-serial-gui`
 
+For the dual-axis telescope application, see [README_TELESCOPE_APP.md](README_TELESCOPE_APP.md):
+
+- `uv run motor-sense-telescope`
+
 The GUI auto-scans on launch and auto-connects to the first device whose name contains `MotorSense`.
 
 That will:

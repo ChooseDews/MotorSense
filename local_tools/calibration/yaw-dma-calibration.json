@@ -1,0 +1,77 @@
+{
+  "board_mac": "90:70:69:1C:48:54",
+  "date": "2026-09-17",
+  "firmware_sha256": "c6c574711aa5a1f2de794c4ef2716611ca15c25ca3922472670d538f86a36310",
+  "firmware": "DMA/Schmitt, motor center 3600 \u00b1100, axis center 2800 \u00b1100",
+  "outbound_span_deg": 23.953799200000002,
+  "formula": "yaw = reference_yaw + (position - reference_position) / ticks_per_degree",
+  "encoder0": {
+    "gpios": [
+      11,
+      12
+    ],
+    "invert": false,
+    "deg_per_tick": 0.030410482522243903,
+    "ticks_per_degree": 32.88339799503493,
+    "forward_fit": {
+      "n": 10,
+      "rmse_deg": 0.09409690070591287,
+      "mae_deg": 0.07266438860460504,
+      "max_abs_deg": 0.17978975599229585,
+      "bias_deg": 0.03865950168944345
+    },
+    "reverse_validation": {
+      "n": 10,
+      "rmse_deg": 0.5125580027284861,
+      "mae_deg": 0.29091615002169746,
+      "max_abs_deg": 1.5285405558376581,
+      "bias_deg": 0.21627150229871023
+    },
+    "stable_reference_reverse": {
+      "n": 8,
+      "rmse_deg": 0.16930734856619487,
+      "mae_deg": 0.14160358544006105,
+      "max_abs_deg": 0.300704450027121,
+      "bias_deg": 0.04829777578632696
+    },
+    "return_error_deg": -0.25022571017795525,
+    "final_stationary_error_deg": -0.22866921017794906,
+    "return_ticks": -8.0,
+    "return_vision_deg": 0.006941850000004024
+  },
+  "encoder1": {
+    "gpios": [
+      9,
+      10
+    ],
+    "invert": true,
+    "deg_per_tick": 0.0002200270027944571,
+    "ticks_per_degree": 4544.896704947489,
+    "forward_fit": {
+      "n": 10,
+      "rmse_deg": 0.1298846656363089,
+      "mae_deg": 0.10491822569080886,
+      "max_abs_deg": 0.2476982775004153,
+      "bias_deg": 0.05714929727614111
+    },
+    "reverse_validation": {
+      "n": 10,
+      "rmse_deg": 0.4673156625165447,
+      "mae_deg": 0.25176840230395053,
+      "max_abs_deg": 1.396458062317464,
+      "bias_deg": 0.11098789167469611
+    },
+    "stable_reference_reverse": {
+      "n": 8,
+      "rmse_deg": 0.16141201049413778,
+      "mae_deg": 0.12026548681598613,
+      "max_abs_deg": 0.2727344693757082,
+      "bias_deg": -0.05571015147058188
+    },
+    "return_error_deg": -0.2727344693757082,
+    "final_stationary_error_deg": -0.251177969375702,
+    "return_ticks": -1208.0,
+    "return_vision_deg": 0.006941850000004024
+  },
+  "notes": "Relative calibration; not an independent absolute-accuracy certification. Re-zero after reboot/reconnection. Scale uses outbound data only; return data are held out."
+}

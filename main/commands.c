@@ -29,6 +29,8 @@
 #include "can_rpc.h"
 #include "quadrature_encoder.h"
 #include "adc_inputs.h"
+#include "sdkconfig.h"
+#include "axis_motion.h"
 
 // Forward declarations
 static void adc_stream_task_fn(void *arg);
@@ -89,6 +91,57 @@ static TaskHandle_t s_adc_stream_task = NULL;
 
 static SemaphoreHandle_t s_motor_mutex;
 static esp_timer_handle_t s_motor_stop_timer;
+static void motor_apply(motor_state_t state, uint8_t duty_percent);
+
+#ifdef CONFIG_AXIS_MOTION_ENABLED
+static axis_motion_t s_axis_motion;
+static TaskHandle_t s_axis_motion_task;
+static uint32_t s_axis_start_errors;
+static uint32_t s_axis_start_invalid;
+
+/* Pitch calibration: encoder 0 is the mechanical axis (GPIO11/12). */
+static void axis_motion_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        if (axis_motion_active(&s_axis_motion)) {
+            uint32_t samples, errors, invalid;
+            quadrature_encoder_axis_health(&samples, &errors, &invalid);
+            bool healthy = samples > 0 && errors == s_axis_start_errors &&
+                           invalid == s_axis_start_invalid;
+            int duty = axis_motion_step(&s_axis_motion,
+                                        quadrature_encoder_get_position_index(0),
+                                        esp_timer_get_time(), healthy);
+            if (s_motor_mutex) xSemaphoreTake(s_motor_mutex, portMAX_DELAY);
+            if (axis_motion_active(&s_axis_motion) && duty != 0) {
+                bool positive = duty > 0;
+#ifdef CONFIG_AXIS_POSITIVE_BACKWARD
+                motor_apply(positive ? MOTOR_BACKWARD : MOTOR_FORWARD,
+                            (uint8_t)abs(duty));
+#else
+                motor_apply(positive ? MOTOR_FORWARD : MOTOR_BACKWARD,
+                            (uint8_t)abs(duty));
+#endif
+            } else {
+                /* A manual MOTOR command cancels the controller before it
+                 * takes the motor mutex. Do not overwrite that handoff. */
+                if (s_axis_motion.state != AXIS_CANCELLED) {
+                    motor_apply(MOTOR_STOP, 0);
+                }
+            }
+            if (s_motor_mutex) xSemaphoreGive(s_motor_mutex);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+static void axis_motion_cancel(axis_motion_state_t reason)
+{
+    if (axis_motion_active(&s_axis_motion)) axis_motion_stop(&s_axis_motion, reason);
+}
+#else
+static void axis_motion_cancel(int reason) { (void)reason; }
+#endif
 
 static void motor_apply(motor_state_t state, uint8_t duty_percent);
 
@@ -417,8 +470,10 @@ static void adc_stream_task_fn(void *arg)
         int v9 = 0, v10 = 0, v11 = 0, v12 = 0;
         
         // Read both encoder ADC pairs
-        adc_inputs_read_gpio9_gpio10(&v9, &v10);
-        adc_inputs_read_gpio11_gpio12(&v11, &v12);
+        const bool ok1 = adc_inputs_read_gpio9_gpio10(&v9, &v10);
+        const bool ok2 = adc_inputs_read_gpio11_gpio12(&v11, &v12);
+        if (!ok1) { v9 = -1; v10 = -1; }
+        if (!ok2) { v11 = -1; v12 = -1; }
         
         // Format: ADC <timestamp_us> <gpio9> <gpio10> <gpio11> <gpio12>
         int64_t ts = esp_timer_get_time();
@@ -426,9 +481,9 @@ static void adc_stream_task_fn(void *arg)
         // Output directly to stdout/serial
         printf("ADC %lld %d %d %d %d\n", ts, v9, v10, v11, v12);
         
-        // Stream at 4kHz to match encoder sampling rate
-        // No delay - run as fast as possible for maximum resolution
-        taskYIELD();
+        // Bound UART bandwidth and let the encoder/control tasks run.
+        // 100 Hz is sufficient for low-speed diagnostic sweeps at 115200 baud.
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
     
     ESP_LOGI(TAG, "ADC stream stopped");
@@ -457,6 +512,15 @@ void commands_init(void)
 
     s_motor_mutex = xSemaphoreCreateMutex();
     s_motor_stop_timer = NULL;
+
+#ifdef CONFIG_AXIS_MOTION_ENABLED
+    s_axis_motion.state = AXIS_IDLE;
+    if (xTaskCreate(axis_motion_task, "axis_motion", 4096, NULL, 11,
+                    &s_axis_motion_task) != pdPASS) {
+        s_axis_motion_task = NULL;
+        ESP_LOGE(TAG, "failed to start axis positioning task");
+    }
+#endif
 
     // LED strip
     led_strip_config_t strip_config = {
@@ -614,9 +678,12 @@ static void send_status(commands_reply_fn reply)
         "STATUS\n"
         "BLE: joinable=%d connected=%d notify=%d conn_id=%u\n"
         "MOTOR: dir=%s duty=%u%%\n"
+#ifdef CONFIG_AXIS_MOTION_ENABLED
+        "AXIS: state=%s target=%ld position=%ld duty=%d corrections=%d\n"
+#endif
         "USER_LED: mode=%s rgb=%u %u %u\n"
-        "ENCODER0: mode=ADC_PHASE gpio_a=%d gpio_b=%d pos=%ld\n"
-        "ENCODER1: mode=ADC_PHASE gpio_a=%d gpio_b=%d pos=%ld\n"
+        "ENCODER0: mode=ADC_SCHMITT gpio_a=%d gpio_b=%d pos=%ld\n"
+        "ENCODER1: mode=ADC_DMA_SCHMITT gpio_a=%d gpio_b=%d pos=%ld\n"
         "INDICATOR: state=%s activity=%d (%ums)\n"
         "ESP: uptime=%us heap_free=%u heap_min=%u reset_reason=%d\n"
         "ESP: idf=%s chip_model=%d cores=%d rev=%d mac_sta=%02X:%02X:%02X:%02X:%02X:%02X\n",
@@ -626,6 +693,13 @@ static void send_status(commands_reply_fn reply)
         (unsigned)s_ble_conn_id,
         motor_state_to_str(s_motor_state),
         (unsigned)s_motor_duty_percent,
+#ifdef CONFIG_AXIS_MOTION_ENABLED
+        axis_motion_state_name(s_axis_motion.state),
+        (long)s_axis_motion.target,
+        (long)quadrature_encoder_get_position_index(0),
+        s_axis_motion.duty,
+        s_axis_motion.corrections,
+#endif
         s_led_dance_enabled ? "DANCE" : "SOLID",
         (unsigned)s_user_led_r,
         (unsigned)s_user_led_g,
@@ -719,11 +793,14 @@ void commands_handle_line(char *line, commands_reply_fn reply)
             "  ECHO <text>\n"
             "  MOTOR F|B|S [duty_percent] [seconds]\n"
             "  M F|B|S [duty_percent] [seconds]\n"
+            "  AXIS MOVE <signed_degrees> [max_duty]\n"
+            "  AXIS STATUS|STOP\n"
             "  LED R G B\n"
             "  LED DANCE\n"
             "  ENCODER <0|1> [INVERT 0|1]\n"
             "  ENCODER STATS\n"
             "  ADC STREAM [START|STOP]\n"
+            "  ENCODER CAPTURE\n"
             "  ID\n"
             "  ID SET <id>\n"
             "  ID RUN CMD <id> <command...>\n"
@@ -736,6 +813,58 @@ void commands_handle_line(char *line, commands_reply_fn reply)
             "  CAN STATS\n"
             "  CAN TEST\n"
             "  CAN SEND <id> [b0..b7]\n");
+        return;
+    }
+
+    if (strncasecmp(line, "AXIS", 4) == 0 &&
+        (line[4] == 0 || isspace((unsigned char)line[4]))) {
+#ifdef CONFIG_AXIS_MOTION_ENABLED
+        const char *args = line + 4;
+        while (isspace((unsigned char)*args)) args++;
+        if (strcasecmp(args, "STATUS") == 0) {
+            char buf[192];
+            snprintf(buf, sizeof(buf),
+                     "AXIS: state=%s start=%ld target=%ld position=%ld duty=%d corrections=%d\n",
+                     axis_motion_state_name(s_axis_motion.state), (long)s_axis_motion.start,
+                     (long)s_axis_motion.target,
+                     (long)quadrature_encoder_get_position_index(0),
+                     s_axis_motion.duty, s_axis_motion.corrections);
+            reply(buf);
+            return;
+        }
+        if (strcasecmp(args, "STOP") == 0) {
+            axis_motion_cancel(AXIS_CANCELLED);
+            if (s_motor_mutex) xSemaphoreTake(s_motor_mutex, portMAX_DELAY);
+            motor_apply(MOTOR_STOP, 0);
+            if (s_motor_mutex) xSemaphoreGive(s_motor_mutex);
+            reply("OK AXIS STOP\n");
+            return;
+        }
+        double degrees = 0.0;
+        int max_duty = 80;
+        char extra = 0;
+        int parsed = sscanf(args + 4, " %lf %d %c", &degrees, &max_duty, &extra);
+        if (strncasecmp(args, "MOVE", 4) != 0 || (parsed != 1 && parsed != 2)) {
+            reply("ERR usage: AXIS MOVE <signed_degrees> [max_duty]\n");
+            return;
+        }
+        uint32_t samples, errors, invalid;
+        quadrature_encoder_axis_health(&samples, &errors, &invalid);
+        if (!s_axis_motion_task || samples == 0 || !axis_motion_begin(
+                &s_axis_motion, quadrature_encoder_get_position_index(0), degrees,
+                strtod(CONFIG_AXIS_DEG_PER_TICK, NULL), max_duty, esp_timer_get_time())) {
+            reply("ERR axis move rejected: use nonzero degrees within +/-30 and duty 35..100\n");
+            return;
+        }
+        s_axis_start_errors = errors;
+        s_axis_start_invalid = invalid;
+        char buf[192];
+        snprintf(buf, sizeof(buf), "OK AXIS MOVE target=%ld ticks=%ld max_duty=%d\n",
+                 (long)s_axis_motion.target, (long)(s_axis_motion.target - s_axis_motion.start), max_duty);
+        reply(buf);
+#else
+        reply("ERR axis positioning firmware is not enabled\n");
+#endif
         return;
     }
 
@@ -974,6 +1103,7 @@ void commands_handle_line(char *line, commands_reply_fn reply)
         motor_p = line + 2;
     }
     if (motor_p) {
+        axis_motion_cancel(AXIS_CANCELLED);
         const char *p = motor_p;
         while (isspace((unsigned char)*p)) {
             p++;
@@ -1038,6 +1168,11 @@ void commands_handle_line(char *line, commands_reply_fn reply)
             }
         }
 
+        if (has_duration && dir != 'S' && !s_motor_stop_timer) {
+            reply("ERR timed motor unavailable (timer init failed)\n");
+            return;
+        }
+
         if (s_motor_stop_timer) {
             // Cancel any pending timed run.
             (void)esp_timer_stop(s_motor_stop_timer);
@@ -1080,12 +1215,25 @@ void commands_handle_line(char *line, commands_reply_fn reply)
             const uint64_t us = (uint64_t)(us_f + 0.5);
             esp_err_t t_err = esp_timer_start_once(s_motor_stop_timer, us);
             if (t_err != ESP_OK) {
+                if (s_motor_mutex) xSemaphoreTake(s_motor_mutex, portMAX_DELAY);
+                motor_apply(MOTOR_STOP, 0);
+                if (s_motor_mutex) xSemaphoreGive(s_motor_mutex);
                 reply("ERR failed to start timer\n");
                 return;
             }
         }
 
         reply("OK\n");
+        return;
+    }
+
+    if (strcasecmp(line, "ENCODER MOTORCAPTURE") == 0) {
+        quadrature_encoder_motor_capture(reply);
+        return;
+    }
+
+    if (strcasecmp(line, "ENCODER CAPTURE") == 0) {
+        quadrature_encoder_capture(reply);
         return;
     }
 
@@ -1099,13 +1247,13 @@ void commands_handle_line(char *line, commands_reply_fn reply)
             uint32_t samples = 0;
             uint32_t overflows = 0;
             quadrature_encoder_get_stats(&samples, &overflows);
+            quadrature_encoder_motor_stats(reply);
             
             char buf[256];
             snprintf(buf, sizeof(buf), 
-                     "ENCODER STATS: samples=%lu overflows=%lu (%.3f%%)\n",
+                     "ENCODER STATS: axis_samples=%lu dma_overflows=%lu\n",
                      (unsigned long)samples,
-                     (unsigned long)overflows,
-                     samples > 0 ? (100.0 * overflows / samples) : 0.0);
+                     (unsigned long)overflows);
             reply(buf);
             return;
         }

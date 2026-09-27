@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>REPORT.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="yaw-encoder-calibration-and-diagnosis--17-september-2026">Yaw encoder calibration and diagnosis — 17 September 2026</h1>
+<p>The working input is <strong>encoder 0, GPIO11/12</strong>. Its provisional conversion on the <strong>original installed firmware</strong> is:</p>
+<pre class="hljs"><code><div>yaw_degrees = reference_yaw + (encoder0_position - reference_position) × 0.03079533
+32.47246 ticks/degree (approximately 32.5)
+</div></code></pre>
+<p>Positive counts corresponded to increasing camera yaw. A reference is necessary: this is an incremental sensor, not an absolute angle measurement. Do not apply this calibration to encoder 1, pitch, or changed firmware without rechecking the scale/sign.</p>
+<h2 id="measurement-and-accuracy">Measurement and accuracy</h2>
+<p>USB UART was <code>/dev/cu.wchusbserial112330</code>; the board identified itself as CAN ID 78, MAC <code>90:70:69:1C:48:54</code>. The camera tracker remained running. Its CSV is a rolling <strong>10-row</strong> history, so each serial record was saved with the latest camera timestamp and angles in <code>yaw_capture.jsonl</code>.</p>
+<p>A 30% duty / 0.5-second test produced no appreciable yaw motion. A 60% / 0.7-second pulse confirmed encoder 0 movement. Calibration then used four 60% / 2-second forward moves and four reverse moves, with settling time between moves. Camera yaw covered approximately <strong>19.47° to 28.48°</strong>. The last second of each plateau supplied the median encoder position and mean of unique camera readings. The camera is logged at roughly 0.53-second intervals; moving samples were not used to claim accuracy.</p>
+<table>
+<thead>
+<tr>
+<th>Result</th>
+<th style="text-align:right">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scale fitted to four forward plateaus</td>
+<td style="text-align:right">32.47246 ticks/°</td>
+</tr>
+<tr>
+<td>Forward fit RMS residual</td>
+<td style="text-align:right">0.093°</td>
+</tr>
+<tr>
+<td>Reverse held-out RMS residual, using fitted intercept</td>
+<td style="text-align:right">0.123°</td>
+</tr>
+<tr>
+<td>Reverse held-out RMS error, using the initial physical zero</td>
+<td style="text-align:right"><strong>0.216°</strong></td>
+</tr>
+<tr>
+<td>Largest reverse error, same initial zero</td>
+<td style="text-align:right"><strong>0.288°</strong></td>
+</tr>
+<tr>
+<td>Encoder round-trip change</td>
+<td style="text-align:right">+24 ticks = +0.739°</td>
+</tr>
+<tr>
+<td>Camera round-trip change</td>
+<td style="text-align:right">+0.455°</td>
+</tr>
+<tr>
+<td>Round-trip discrepancy</td>
+<td style="text-align:right"><strong>0.284°</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The same-zero figures are the useful ones for the new relative readout. At least two additional counts appeared after the initial short pulse had stopped, while vision stayed near 19.47°. This is consistent with decoder drift/noise; backlash or optical/mechanical effects may also contribute. A scale factor alone does not remove these errors.</p>
+<p>A later stopped check showed encoder 0 unchanged at 2 ticks while camera yaw shifted from about 22.33° to 22.60° over roughly 3.5 minutes. That disagreement cannot distinguish vision drift, mechanical movement, or missed encoder motion; it reinforces that the measured short-run error is not a long-term accuracy guarantee.</p>
+<p>This is a local, one-round-trip calibration at one main test speed. The vision measurement has its own pose error, and we have no independent angular standard. The results measure <strong>agreement with vision</strong>, not absolute accuracy over a full revolution, other speeds, or long periods. More displayed decimal places do not improve accuracy.</p>
+<p><img src="yaw-calibration.png" alt="Calibration and fixed-zero residuals"></p>
+<h2 id="why-encoder-1-appears-not-to-work">Why encoder 1 appears not to work</h2>
+<p>Both GPIO9 and GPIO10 have substantial signals during motor movement. At reduced speed they show consistent quadrature direction that reverses with the commanded direction. This argues strongly against a completely dead sensor or disconnected pair.</p>
+<p>Given the original labels <code>Motor_IR</code> and <code>Axis_IR</code>, the measurements suggest:</p>
+<ul>
+<li><strong>GPIO11/12 (encoder 0): likely Axis_IR</strong>, the slower signal.</li>
+<li><strong>GPIO9/10 (encoder 1): likely Motor_IR</strong>, the much faster signal.</li>
+</ul>
+<p>This mapping is an inference from signal speeds, not confirmed wire tracing.</p>
+<p>The installed image differs from the checked-in source: it rejects <code>ENCODER 0</code> and has no ADC streaming command. I first measured that original image, backed up the entire configured 2 MiB flash, and then temporarily installed diagnostic builds of the current source. Therefore the exact implementation findings below concern <strong>current <code>main/</code></strong>, not a claim that the original binary has identical code.</p>
+<h3 id="full-rate-measurements">Full-rate measurements</h3>
+<p>The diagnostic sampler buffered 1,024 samples in RAM before printing them, avoiding UART transmission speed as the acquisition limit. Each timestamp marks a completed group of four sequential ADC conversions; channels are not sampled simultaneously.</p>
+<table>
+<thead>
+<tr>
+<th>Buffered capture</th>
+<th style="text-align:right">60% forward</th>
+<th style="text-align:right">45% backward</th>
+<th style="text-align:right">45% forward</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Duration of 1,024 samples</td>
+<td style="text-align:right">0.346 s</td>
+<td style="text-align:right">0.357 s</td>
+<td style="text-align:right">0.356 s</td>
+</tr>
+<tr>
+<td>Median spacing</td>
+<td style="text-align:right">279 µs</td>
+<td style="text-align:right">279 µs</td>
+<td style="text-align:right">279 µs</td>
+</tr>
+<tr>
+<td>Longest sampling gap</td>
+<td style="text-align:right">14.36 ms</td>
+<td style="text-align:right">14.60 ms</td>
+<td style="text-align:right">14.67 ms</td>
+</tr>
+<tr>
+<td>Encoder 1: either input clipped</td>
+<td style="text-align:right">63.4%</td>
+<td style="text-align:right">60.9%</td>
+<td style="text-align:right">63.5%</td>
+</tr>
+<tr>
+<td>Offline positive transitions</td>
+<td style="text-align:right">196</td>
+<td style="text-align:right">352</td>
+<td style="text-align:right">1</td>
+</tr>
+<tr>
+<td>Offline negative transitions</td>
+<td style="text-align:right">483</td>
+<td style="text-align:right">1</td>
+<td style="text-align:right">452</td>
+</tr>
+<tr>
+<td>Offline invalid opposite-quadrant jumps</td>
+<td style="text-align:right">234</td>
+<td style="text-align:right">2</td>
+<td style="text-align:right">1</td>
+</tr>
+</tbody>
+</table>
+<p>Offline counts used a Schmitt threshold centered at 2,800 ADC counts with ±100 hysteresis, retaining clipped samples as high states. These are <strong>diagnostic transitions, not calibrated motor position counts</strong>: sampling gaps still lose information.</p>
+<p>At 60% forward, the slow pair had a dominant component near <strong>9.5 Hz</strong> and roughly 83° A/B phase separation; the fast pair had a dominant sampled component near <strong>1.36 kHz</strong>. The latter frequency is not an independently verified true shaft frequency: aliasing remains possible. At 45%, the fast pair's dominant components were roughly 348–388 Hz; speed varies within the short captures. Strong direction reversal at 45% is the most useful evidence of a functioning second sensor.</p>
+<p><img src="yaw-waveforms.png" alt="Raw buffered signals"></p>
+<h3 id="concrete-software-and-signal-issues">Concrete software and signal issues</h3>
+<ol>
+<li><strong>The target sampling rate is not the achieved rate.</strong> <code>ENCODER_ADC_SAMPLE_PERIOD_US=100</code> requests 10 kHz, but four oneshot conversions take about 279 µs. Notifications coalesce, so past timer ticks do not recover missed signal history. The measured average rate is about 2.9 kHz including gaps.</li>
+<li><strong>There are deliberate blind intervals.</strong> <code>vTaskDelay(1)</code> every 200 samples, with <code>CONFIG_FREERTOS_HZ=100</code>, introduces roughly 10 ms of waiting; measured gaps reached 14.7 ms. A fast motor encoder can traverse many quadrants during those gaps.</li>
+<li><strong>Clipping rejects much of the waveform.</strong> Current <code>encoder_process_sample()</code> returns whenever either input is at the ADC rails. The captured motor pair loses roughly 61–63% of its samples to this rule. A saturated high value still contains useful sign information for threshold decoding. Adaptive analog normalization plus discarding those plateaus is a poor match here.</li>
+<li><strong>Concurrent ADC consumers caused hidden failures.</strong> Encoder sampling, ADC streaming, and BLE statistics share the converters. The oneshot driver can return <code>ESP_ERR_TIMEOUT</code>; previous wrappers ignored return values and returned success. Initial diagnostic streaming had many invalid reads. Serializing consumers and checking errors produced <strong>zero invalid channel values in a subsequent 565-record stream</strong>. This correction does not solve the rate/gap problem.</li>
+<li><strong>Unbounded ADC printing is unsuitable.</strong> The original stream loop tried to print continuously at 115200 baud. It is now bounded to approximately 100 Hz; the separate buffered capture is used for fast signals.</li>
+</ol>
+<p>Espressif documents the oneshot read timeout behavior and thread-safety guarantees in its <a href="https://docs.espressif.com/projects/esp-idf/en/v5.1/esp32s3/api-reference/peripherals/adc_oneshot.html">ADC oneshot documentation</a>. Local IDF v5.5.1 <code>adc_oneshot.c</code> also returns timeout when its hardware lock cannot be acquired.</p>
+<h2 id="changes-delivered-and-board-state">Changes delivered and board state</h2>
+<ul>
+<li><strong>Original firmware restored</strong>, with esptool hash verification. Motor stop sent afterward. Encoder counters reset during firmware restarts; the old numerical zero is no longer valid. Final check showed motor <code>S</code>, duty <code>0%</code>, encoder 0 at 2 ticks, and camera yaw about 22.60°. BLE clients need to reconnect.</li>
+<li>Full original backup: <code>yaw-original-flash.bin</code>; extracted restorable app: <code>yaw-original-app.bin</code>. These binary files are local and ignored by Git. Full backup SHA-256 is recorded in <code>yaw-calibration.json</code>.</li>
+<li>Web client now has an opt-in <strong>“Yaw degree readout · encoder 0”</strong> panel. On the yaw device, expand it and click <strong>“Set yaw zero here.”</strong> Scale is editable, and zero is invalidated on disconnect or an inversion toggle. The pitch device is not automatically calibrated.</li>
+<li>Source fixes serialize ADC access, propagate read errors, exclude failed readings from BLE statistics, and bound ADC streaming. <code>ENCODER CAPTURE</code> adds a 1,024-sample diagnostic burst. These source changes build successfully but <strong>are not the firmware currently installed</strong>.</li>
+<li>The decoder's clipping policy and sampling architecture have <strong>not</strong> been replaced. Encoder 1 is diagnosed, not repaired for reliable full-speed position tracking. The ADC access fix alone should not be presented as a complete encoder repair.</li>
+</ul>
+<p>Both the client production build and ESP-IDF diagnostic firmware build passed. Full-rate captures completed in all three tests. <code>git diff --check</code> passed. Client interaction with the physical board was not browser-tested after the firmware restore.</p>
+<h2 id="next-repair">Next repair</h2>
+<p>Confirm the Motor_IR/Axis_IR wire mapping and measure the actual input voltages with a scope. A reading of 4095 establishes ADC saturation, not a specific voltage or proof of electrical overvoltage. Check the sensor interface and board conditioning against the sensor supply and output type.</p>
+<p>For the fast motor pair, use either continuous/DMA ADC acquisition with sufficient rate and no 10 ms gaps, or condition both signals with suitable comparators/Schmitt circuitry and feed ESP32 pulse-counting hardware. <strong>Do not simply switch these analog inputs to digital GPIO interrupts</strong>: the measured raw low levels do not establish valid digital-low voltage levels. Thresholds must be based on the real input voltages and signal range. Validate direction, missed transitions, and count ratios through the full speed range after the acquisition change.</p>
+<p>For encoder 0, retain the provisional readout for coarse positioning, then repeat multi-speed, multi-angle, repeated forward/reverse sweeps after improving the decoder. Absolute calibration would require an independent angle reference.</p>
+<h2 id="reproduce">Reproduce</h2>
+<p>From the repository root (Python scripts use pyserial/numpy from <code>local_tools/.venv</code>):</p>
+<pre class="hljs"><code><div>local_tools/.venv/bin/python local_tools/calibration/analyze_yaw.py
+local_tools/.venv/bin/python local_tools/calibration/analyze_bursts.py
+local_tools/.venv/bin/python local_tools/calibration/yaw_probe.py --seconds 5
+<span class="hljs-comment"># With diagnostic firmware only:</span>
+local_tools/.venv/bin/python local_tools/calibration/yaw_probe.py --burst --<span class="hljs-built_in">command</span> <span class="hljs-string">'MOTOR F 45 2'</span> --seconds 7 --output /tmp/yaw-test.jsonl
+uv run --quiet --no-project --with matplotlib --with numpy python local_tools/calibration/plot_results.py
+</div></code></pre>
+<p>The probe accepts only bounded motion (up to 60% duty, 5 seconds), checks fresh vision before motion, and sends stop on exit. The board's timed stop is independent of the host process. It does not monitor mechanical clearance; use it only in the tested clear operating area.</p>
+
+</body>
+</html>

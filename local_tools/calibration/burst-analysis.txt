@@ -1,0 +1,15 @@
+MOTOR F 60 2 N 1024 duration 0.346328999999999 median_dt_us 279.0000000008064 max_gap_us 14355.999999999369
+enc 0 positive 12 negative 0 invalid 1 either_channel_clipped 0.7216796875
+dominant_Hz 9.5 phase_A_minus_B_deg 83.43028687245219
+enc 1 positive 196 negative 483 invalid 234 either_channel_clipped 0.6337890625
+dominant_Hz 1362.0 phase_A_minus_B_deg -84.4531712950819
+MOTOR B 45 2 N 1024 duration 0.35668700000000086 median_dt_us 278.99999999903 max_gap_us 14603.999999998507
+enc 0 positive 0 negative 3 invalid 0 either_channel_clipped 0.716796875
+dominant_Hz 5.0 phase_A_minus_B_deg -115.55120917126372
+enc 1 positive 352 negative 1 invalid 2 either_channel_clipped 0.609375
+dominant_Hz 347.5 phase_A_minus_B_deg 48.502234775081526
+MOTOR F 45 2 N 1024 duration 0.3563760000000116 median_dt_us 278.9999999919246 max_gap_us 14673.99999999941
+enc 0 positive 4 negative 0 invalid 0 either_channel_clipped 0.689453125
+dominant_Hz 5.0 phase_A_minus_B_deg 169.74707402124432
+enc 1 positive 1 negative 452 invalid 1 either_channel_clipped 0.634765625
+dominant_Hz 387.5 phase_A_minus_B_deg -62.95097373884919

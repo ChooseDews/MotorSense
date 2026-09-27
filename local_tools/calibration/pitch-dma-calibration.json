@@ -1,0 +1,86 @@
+{
+  "axis": "pitch",
+  "date": "2026-09-18",
+  "board_mac": "90:70:69:1C:48:4C",
+  "can_id": 158,
+  "firmware_sha256": "d84003c68a59b656432ab8f3956a2c55c12a8ab4b277035f66d6d72c1d9ca53f",
+  "validated_duty_percent": 35,
+  "motor_schmitt_center": 3800,
+  "motor_schmitt_hysteresis": 100,
+  "outbound_span_deg": 10.656193749999998,
+  "camera_reference": "camera_yaw_pitch_tracker/telescope_angles.csv pitch column",
+  "encoders": {
+    "0": {
+      "gpios": [
+        11,
+        12
+      ],
+      "observed_role": "axis",
+      "invert": false,
+      "deg_per_tick": 0.030361306325309007,
+      "ticks_per_degree": 32.93665922294015,
+      "forward_fit": {
+        "n": 8,
+        "rmse_deg": 0.10316795826813799,
+        "mae_deg": 0.07844352123471135,
+        "max_abs_deg": 0.24018149698763902,
+        "bias_deg": -0.04124217914005204
+      },
+      "reverse_validation": {
+        "n": 8,
+        "rmse_deg": 0.12623203383181683,
+        "mae_deg": 0.10415015177016708,
+        "max_abs_deg": 0.23164302469876474,
+        "bias_deg": 0.08876156540028819
+      },
+      "stable_reference_reverse": {
+        "n": 8,
+        "rmse_deg": 0.12623203383181683,
+        "mae_deg": 0.10415015177016708,
+        "max_abs_deg": 0.23164302469876474,
+        "bias_deg": 0.08876156540028819
+      },
+      "return_error_deg": 0.23164302469876474,
+      "final_stationary_error_deg": 0.2268283746987655,
+      "return_ticks": -4.0,
+      "return_vision_deg": -0.35308825000000077
+    },
+    "1": {
+      "gpios": [
+        9,
+        10
+      ],
+      "observed_role": "motor",
+      "invert": true,
+      "deg_per_tick": 0.00021650447218180037,
+      "ticks_per_degree": 4618.842234170076,
+      "forward_fit": {
+        "n": 8,
+        "rmse_deg": 0.07973395044058473,
+        "mae_deg": 0.0491867592458789,
+        "max_abs_deg": 0.19371170401319393,
+        "bias_deg": -0.023578073825212598
+      },
+      "reverse_validation": {
+        "n": 8,
+        "rmse_deg": 0.0951223987885215,
+        "mae_deg": 0.07660208877824622,
+        "max_abs_deg": 0.1904933913914687,
+        "bias_deg": 0.008037426660331096
+      },
+      "stable_reference_reverse": {
+        "n": 8,
+        "rmse_deg": 0.0951223987885215,
+        "mae_deg": 0.07660208877824622,
+        "max_abs_deg": 0.1904933913914687,
+        "bias_deg": 0.008037426660331096
+      },
+      "return_error_deg": 0.1904933913914687,
+      "final_stationary_error_deg": 0.18567874139146945,
+      "return_ticks": -751.0,
+      "return_vision_deg": -0.35308825000000077
+    }
+  },
+  "reference_policy": "Fresh stationary reference required after reboot or inversion changes; scales are host-side.",
+  "limitations": "Settled CV-referenced validation over tested interval. Higher-duty accuracy not validated; 40% produced an invalid motor transition."
+}

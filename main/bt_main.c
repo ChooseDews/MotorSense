@@ -379,9 +379,10 @@ static void ble_adc_task_fn(void *arg)
             int v11 = 0;
             int v12 = 0;
 
-            (void)adc_inputs_read_gpio11_gpio12(&v11, &v12);
-            adc_stats_push(&s11, v11);
-            adc_stats_push(&s12, v12);
+            if (adc_inputs_read_gpio11_gpio12(&v11, &v12)) {
+                adc_stats_push(&s11, v11);
+                adc_stats_push(&s12, v12);
+            }
             vTaskDelay(min_sample_delay_ticks);
         }
 
@@ -672,8 +673,6 @@ void app_main(void)
         ESP_ERROR_CHECK(nvs_flash_init());
     }
 
-    quadrature_encoder_start();
-
     commands_init();
     serial_console_start();
     can_iface_set_ble_sink(ble_uart_send_str);
@@ -712,9 +711,6 @@ void app_main(void)
     // Create button task
     xTaskCreate(ble_button_task_fn, "ble_button", 4096, NULL, 5, NULL);
 
-    // Periodic ADC stats (ESP_LOGI only; no BLE output)
-    xTaskCreate(ble_adc_task_fn, "ble_adc", 4096, NULL, 5, &s_ble_adc_task);
-
     // BLE-only targets should release Classic BT memory.
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 
@@ -730,6 +726,11 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_ble_gap_register_callback(gap_event_handler));
     ESP_ERROR_CHECK(esp_ble_gatts_register_callback(gatts_event_handler));
     ESP_ERROR_CHECK(esp_ble_gatts_app_register(0));
+
+    // Start acquisition after radio initialization, which uses ADC hardware
+    // during calibration. Otherwise continuous conversion can stall at boot.
+    quadrature_encoder_start();
+    xTaskCreate(ble_adc_task_fn, "ble_adc", 4096, NULL, 5, &s_ble_adc_task);
 
     ESP_LOGI(TAG, "BLE UART started (device name: %s)", s_device_name);
 }

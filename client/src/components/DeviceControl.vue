@@ -2,6 +2,7 @@
 import { computed, ref, watch, nextTick } from 'vue'
 import { useBleStore } from '../stores/ble'
 import EncoderBar from './EncoderBar.vue'
+import YawReadout from './YawReadout.vue'
 
 const props = defineProps({
   deviceId: { type: String, required: true }
@@ -99,6 +100,9 @@ function toggleEncoder1Invert() {
                     @toggle-invert="toggleEncoder1Invert"
                 />
             </div>
+            <YawReadout :position="deviceEntry.encoderPos0" :motorPosition="deviceEntry.encoderPos1"
+                :connected="deviceEntry.isConnected" :hasReading="deviceEntry.hasEncoderReading"
+                :inverted="deviceEntry.encoder0Inverted" :motorInverted="deviceEntry.encoder1Inverted" />
         </div>
 
         <!-- Controls -->

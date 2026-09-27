@@ -1,0 +1,22 @@
+{
+  "date": "2026-09-17",
+  "board_mac": "90:70:69:1C:48:54",
+  "board_can_id": 78,
+  "encoder_index": 0,
+  "gpio_a": 11,
+  "gpio_b": 12,
+  "firmware": "original installed image, restored after diagnostics",
+  "original_flash_sha256": "0ad1bb966b7df75bd708f0a6dacc50bf9d09221f013737617eb428f190518283",
+  "degrees_per_tick": 0.03079532815888024,
+  "ticks_per_degree": 32.472457992354165,
+  "formula": "yaw_deg = reference_yaw_deg + (position - reference_position) * degrees_per_tick",
+  "calibration_span_deg": 9.0083795,
+  "motor_duty_percent": 60,
+  "forward_fit_rmse_deg": 0.09293290590928485,
+  "reverse_validation_rmse_with_fitted_intercept_deg": 0.12297356008889189,
+  "reverse_validation_rmse_with_initial_zero_deg": 0.21602529781132898,
+  "reverse_validation_max_error_with_initial_zero_deg": 0.28839619061698185,
+  "round_trip_relative_discrepancy_deg": 0.2841188758131238,
+  "status": "provisional; local settled-pose comparison to vision, not absolute angular accuracy",
+  "notes": "Re-zero after reset/reconnect. Recheck scale and sign after firmware/inversion changes. Do not apply to encoder 1 or pitch."
+}

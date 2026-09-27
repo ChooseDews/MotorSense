@@ -12,6 +12,8 @@ dependencies = [
   "pyserial>=3.5",
   "pyqtgraph>=0.13.0",
   "numpy>=1.24.0",
+  "astropy>=6.1",
+  "skyfield>=1.49",
   "PyQt5>=5.15.0",
 ]
 
@@ -19,10 +21,15 @@ dependencies = [
 ble-serial = "ble_serial_cli.cli:main"
 ble-serial-gui = "ble_serial_cli.gui:main"
 adc-plotter = "adc_plotter:main"
+lx200-telescope = "lx200_telescope_controller:main"
+motor-sense-telescope = "motor_sense_telescope.app:main"
+indi-custom-mount = "motor_sense_telescope.indi_socket_adapter:main"
+motor-sense-lx200-bridge = "motor_sense_telescope.lx200_socket_bridge:main"
+motor-sense-stellarium-bridge = "motor_sense_telescope.lx200_socket_bridge:main"
 
 [build-system]
 requires = ["hatchling>=1.25.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ble_serial_cli"]
+packages = ["src/ble_serial_cli", "src/motor_sense_telescope"]

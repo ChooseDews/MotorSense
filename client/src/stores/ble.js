@@ -45,6 +45,7 @@ export const useBleStore = defineStore('ble', () => {
                     name: device.name || 'Unknown Device',
                     isConnected: false,
                     logs: [],
+                    hasEncoderReading: false,
                     encoderPos0: 0,
                     encoderPos1: 0,
                     encoder0Inverted: false,
@@ -69,6 +70,7 @@ export const useBleStore = defineStore('ble', () => {
         if (!entry) return
 
         try {
+            entry.hasEncoderReading = false
             logToDevice(deviceId, 'Connecting...')
             entry.device.addEventListener('gattserverdisconnected', () => handleDisconnect(deviceId))
 
@@ -85,6 +87,8 @@ export const useBleStore = defineStore('ble', () => {
 
             entry.isConnected = true
             logToDevice(deviceId, 'Connected & Subscribed')
+            await sendCommand(deviceId, 'ENCODER 0')
+            await sendCommand(deviceId, 'ENCODER 1')
 
         } catch (e) {
             logToDevice(deviceId, `Connection failed: ${e.message}`)
@@ -95,6 +99,7 @@ export const useBleStore = defineStore('ble', () => {
     function handleDisconnect(deviceId) {
         const entry = devices.get(deviceId)
         if (entry) {
+            entry.hasEncoderReading = false
             entry.isConnected = false
             entry.server = null
             entry.rx = null
@@ -137,9 +142,15 @@ export const useBleStore = defineStore('ble', () => {
 
             const dev = devices.get(deviceId)
             if (dev) {
+                // Read actual firmware inversion rather than assuming defaults.
+                const config = /^ENCODER ([01]): pos=(-?\d+) invert=([01])$/.exec(line)
+                const invertedAck = /^OK encoder ([01]) invert=([01])$/.exec(line)
+                if (config) dev[`encoder${config[1]}Inverted`] = config[3] === '1'
+                if (invertedAck) dev[`encoder${invertedAck[1]}Inverted`] = invertedAck[2] === '1'
                 // Try dual first
                 const mDual = encDualRe.exec(line)
                 if (mDual) {
+                    dev.hasEncoderReading = true
                     const p0 = parseInt(mDual[1], 10)
                     const p1 = parseInt(mDual[2], 10)
                     if (!Number.isNaN(p0)) dev.encoderPos0 = p0
@@ -159,6 +170,7 @@ export const useBleStore = defineStore('ble', () => {
                     if (mSingle) {
                         const p = parseInt(mSingle[1], 10)
                         if (!Number.isNaN(p)) {
+                            dev.hasEncoderReading = true
                             // If legacy format, maybe just map to pos0? Or keep 'encoderPos'
                             // Let's map to pos0 for consistency in UI
                             dev.encoderPos0 = p

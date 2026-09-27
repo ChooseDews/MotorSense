@@ -170,3 +170,33 @@ menu "Example Configuration"
         help
             The number of devices over the network(max: 300).
 endmenu
+
+menu "Encoder board calibration"
+    config ENCODER_MOTOR_CENTER
+        int "GPIO9/10 motor encoder Schmitt center (ADC counts)"
+        range 101 4044
+        default 3600
+        help
+            Yaw validated at 3600. Pitch board 90:70:69:1C:48:4C uses
+            3800 with 100 hysteresis at 35 percent duty. Higher speeds
+            require separate waveform and count validation.
+    config ENCODER_MOTOR_HYSTERESIS
+        int "GPIO9/10 motor encoder Schmitt hysteresis (ADC counts)"
+        range 1 100
+        default 100
+endmenu
+
+menu "Axis positioning"
+    config AXIS_MOTION_ENABLED
+        bool "Enable calibrated relative axis positioning"
+        default n
+    config AXIS_DEG_PER_TICK
+        string "Axis degrees per tick"
+        default "0.030361306325309"
+    config AXIS_POSITIVE_BACKWARD
+        bool "Positive encoder direction uses MOTOR B"
+        default n
+    config ENCODER_MOTOR_ENABLED
+        bool "Acquire motor encoder (diagnostic only)"
+        default y
+endmenu

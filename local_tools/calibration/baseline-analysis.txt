@@ -1,0 +1,58 @@
+[
+  {
+    "command": "MOTOR F 60 0.7",
+    "pos": 664.5,
+    "yaw": 19.479304499999998
+  },
+  {
+    "command": "HELP",
+    "pos": 666.0,
+    "yaw": 19.470226
+  },
+  {
+    "command": "MOTOR F 60 2",
+    "pos": 735.0,
+    "yaw": 21.557927499999998
+  },
+  {
+    "command": "MOTOR F 60 2",
+    "pos": 813.5,
+    "yaw": 23.7392715
+  },
+  {
+    "command": "MOTOR F 60 2",
+    "pos": 889.0,
+    "yaw": 26.281123
+  },
+  {
+    "command": "MOTOR F 60 2",
+    "pos": 962.0,
+    "yaw": 28.4786055
+  },
+  {
+    "command": "MOTOR B 60 2",
+    "pos": 901.0,
+    "yaw": 26.6498005
+  },
+  {
+    "command": "MOTOR B 60 2",
+    "pos": 830.5,
+    "yaw": 24.3964675
+  },
+  {
+    "command": "MOTOR B 60 2",
+    "pos": 758.0,
+    "yaw": 22.015
+  },
+  {
+    "command": "MOTOR B 60 2",
+    "pos": 690.0,
+    "yaw": 19.925195000000002
+  }
+]
+Forward fit deg/tick 0.03079532815888024 ticks/deg 32.472457992354165
+forward fit RMSE 0.09293290590928485 max_abs 0.15478031322074415 errors [-0.08130895  0.15478031 -0.06202391 -0.01144746]
+reverse held out RMSE 0.12297356008889189 max_abs 0.16991110040289215 errors [-0.06115747  0.02110489  0.1699111   0.16563379]
+round trip delta ticks 24.0 delta yaw 0.45496900000000196
+forward initial-zero RMSE 0.15058300569383123 max_abs 0.2732654034348343
+reverse initial-zero RMSE 0.21602529781132898 max_abs 0.28839619061698185

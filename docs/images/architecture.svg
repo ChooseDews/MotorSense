@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440" font-family="-apple-system, 'Segoe UI', sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <style>
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+    .inner { fill: #eff6ff; stroke: #bfdbfe; }
+    .title { font-size: 13px; font-weight: 600; fill: #0f172a; }
+    .sub   { font-size: 10.5px; fill: #64748b; }
+    .lbl   { font-size: 10px; fill: #6b7280; }
+    .arrow { stroke: #94a3b8; stroke-width: 1.5; fill: none; marker-end: url(#arr); }
+    .dash  { stroke-dasharray: 4 3; }
+  </style>
+
+  <rect x="0" y="0" width="800" height="440" fill="#f8fafc"/>
+
+  <!-- Mount (firmware) -->
+  <rect class="box" x="290" y="24" width="220" height="110" rx="10"/>
+  <text class="title" x="400" y="46" text-anchor="middle">Telescope mount</text>
+  <text class="sub" x="400" y="62" text-anchor="middle">2 × ESP32-S3 boards (BLE NUS)</text>
+  <rect class="inner" x="308" y="72" width="88" height="48" rx="6"/>
+  <text x="352" y="93" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Yaw board</text>
+  <text class="sub" x="352" y="108" text-anchor="middle">encoder + motor</text>
+  <rect class="inner" x="404" y="72" width="88" height="48" rx="6"/>
+  <text x="448" y="93" text-anchor="middle" font-size="11" font-weight="600" fill="#0f172a">Pitch board</text>
+  <text class="sub" x="448" y="108" text-anchor="middle">encoder + motor</text>
+
+  <!-- Bottom row -->
+  <rect class="box" x="24" y="300" width="210" height="104" rx="10"/>
+  <text class="title" x="129" y="322" text-anchor="middle">camera_yaw_pitch_tracker</text>
+  <text class="sub" x="129" y="340" text-anchor="middle">Python + OpenCV, 4 AprilTags</text>
+  <text class="sub" x="129" y="356" text-anchor="middle">webcam → yaw/pitch (deg)</text>
+  <text class="sub" x="129" y="372" text-anchor="middle">writes telescope_angles.csv,</text>
+  <text class="sub" x="129" y="388" text-anchor="middle">the ground-truth reference</text>
+
+  <rect class="box" x="270" y="300" width="210" height="104" rx="10"/>
+  <text class="title" x="375" y="322" text-anchor="middle">local_tools (Python, uv)</text>
+  <text class="sub" x="375" y="340" text-anchor="middle">ble-serial CLI/GUI · adc-plotter</text>
+  <text class="sub" x="375" y="356" text-anchor="middle">motor-sense-telescope GUI</text>
+  <text class="sub" x="375" y="372" text-anchor="middle">LX200 server · INDI bridges</text>
+  <text class="sub" x="375" y="388" text-anchor="middle">calibration data &amp; reports</text>
+
+  <rect class="box" x="516" y="300" width="150" height="104" rx="10"/>
+  <text class="title" x="591" y="322" text-anchor="middle">Planetarium apps</text>
+  <text class="sub" x="591" y="340" text-anchor="middle">Stellarium</text>
+  <text class="sub" x="591" y="356" text-anchor="middle">SkySafari</text>
+  <text class="sub" x="591" y="372" text-anchor="middle">KStars / INDI</text>
+  <text class="sub" x="591" y="388" text-anchor="middle">GOTO, tracking</text>
+
+  <!-- Right column: client + iOS -->
+  <rect class="box" x="650" y="56" width="130" height="86" rx="10"/>
+  <text class="title" x="715" y="78" text-anchor="middle">client/</text>
+  <text class="sub" x="715" y="94" text-anchor="middle">Vue 3 + Vite,</text>
+  <text class="sub" x="715" y="109" text-anchor="middle">Web Bluetooth,</text>
+  <text class="sub" x="715" y="124" text-anchor="middle">3-D view · logging</text>
+
+  <rect class="box" x="650" y="164" width="130" height="92" rx="10"/>
+  <text class="title" x="715" y="186" text-anchor="middle">iOS app</text>
+  <text class="sub" x="715" y="202" text-anchor="middle">SwiftUI,</text>
+  <text class="sub" x="715" y="217" text-anchor="middle">CoreBluetooth,</text>
+  <text class="sub" x="715" y="232" text-anchor="middle">RA/Dec GOTO,</text>
+  <text class="sub" x="715" y="247" text-anchor="middle">sky view</text>
+
+  <!-- Arrows -->
+  <path class="arrow" d="M344 136 L344 298"/>
+  <path class="arrow dash" d="M406 298 L406 136"/>
+  <path class="arrow" d="M512 84 L648 84"/>
+  <path class="arrow dash" d="M648 118 L512 118"/>
+  <path class="arrow" d="M650 200 C 590 200, 560 170, 512 140"/>
+  <path class="arrow" d="M514 352 L482 352"/>
+  <path class="arrow" d="M236 352 L268 352"/>
+
+  <text class="lbl" x="336" y="220" text-anchor="end" transform="rotate(-90 336 220)">AXIS MOVE</text>
+  <text class="lbl" x="414" y="220" transform="rotate(90 414 220)">status notify</text>
+  <text class="lbl" x="580" y="78" text-anchor="middle">commands</text>
+  <text class="lbl" x="580" y="112" text-anchor="middle">encoder data</text>
+  <text class="lbl" x="568" y="192" text-anchor="middle">BLE NUS</text>
+  <text class="lbl" x="498" y="338" text-anchor="end">LX200 / INDI</text>
+  <text class="lbl" x="252" y="346" text-anchor="end">CSV</text>
+</svg>

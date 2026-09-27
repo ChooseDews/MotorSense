@@ -1,0 +1,8 @@
+pitch-motor-diagnostic.jsonl samples 1024 min/max [3181 3253] [4095 4095]
+center 3600 hysteresis 100 forward 38 reverse 116 invalid 3
+center 3800 hysteresis 100 forward 14 reverse 274 invalid 12
+center 3950 hysteresis 50 forward 0 reverse 340 invalid 2
+pitch-40pct-diagnostic.jsonl samples 1024 min/max [2587 2702] [4095 4095]
+center 3600 hysteresis 100 forward 0 reverse 165 invalid 1
+center 3800 hysteresis 100 forward 0 reverse 166 invalid 0
+center 3950 hysteresis 50 forward 0 reverse 166 invalid 0
