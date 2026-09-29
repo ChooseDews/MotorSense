@@ -3,6 +3,9 @@
 .AppleDouble
 .LSOverride
 
+
+./temp
+
 *.jsonl
 *sky_catalog.json
 

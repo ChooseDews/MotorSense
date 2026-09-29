@@ -12,7 +12,7 @@ Everything talks to the boards over BLE using simple newline-terminated commands
 
 | Folder | What it is |
 | --- | --- |
-| `main/` | ESP-IDF firmware: BLE serial, closed-loop axis motion, encoder decoding, ADC, CAN |
+| `main/` | ESP-IDF firmware: BLE serial, closed-loop axis motion, encoder decoding, ADC, persistent board roles, BLE OTA |
 | `client/` | Vue 3 + Vite web app (Web Bluetooth): control, encoder readout, logging, 3-D view |
 | `local_tools/` | Python tools (uv): BLE serial CLI/GUI, telescope control app, LX200/INDI bridges, calibration data |
 | `camera_yaw_pitch_tracker/` | OpenCV AprilTag tracker that measures true yaw/pitch for calibration |

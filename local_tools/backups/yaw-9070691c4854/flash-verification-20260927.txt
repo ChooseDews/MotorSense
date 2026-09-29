@@ -1,0 +1,102 @@
+DEVICE role=YAW firmware=1.0.0 hardware=unknown project=motorsense
+CALIBRATION counts_rev=11840 counts_degree=32.888888889 degrees_count=0.0304054054 min=-180.000 max=180.000 zero=0.000
+CONFIG motor_invert=0 axis_invert=0 encoder_motor_invert=1 motor_encoder_enabled=0 motor_center=3600 motor_hysteresis=100 pending_reboot=0
+OK saved; reboot to apply
+OK REBOOT
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0x2b (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4038120d
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x158c
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2f8c
+entry 0x403c8924
+I (29) boot: ESP-IDF v5.5.1 2nd stage bootloader
+I (29) boot: compile time Sep 27 2026 16:28:17
+I (29) boot: Multicore bootloader
+I (29) boot: chip revision: v0.2
+I (32) boot: efuse block revision: v1.4
+I (36) boot.esp32s3: Boot SPI Speed : 80MHz
+I (40) boot.esp32s3: SPI Mode       : DIO
+I (43) boot.esp32s3: SPI Flash Size : 2MB
+I (47) boot: Enabling RNG early entropy source...
+I (52) boot: Partition Table:
+I (54) boot: ## Label            Usage          Type ST Offset   Length
+I (61) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (67) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (74) boot:  2 ota_0            OTA app          00 10 00010000 000f0000
+I (80) boot:  3 ota_1            OTA app          00 11 00100000 000f0000
+I (87) boot:  4 otadata          OTA data         01 00 001f0000 00002000
+I (93) boot: End of partition table
+I (97) esp_image: segment 0: paddr=00010020 vaddr=3c090020 size=25e54h (155220) map
+I (131) esp_image: segment 1: paddr=00035e7c vaddr=3fc99f00 size=04058h ( 16472) load
+I (135) esp_image: segment 2: paddr=00039edc vaddr=40374000 size=0613ch ( 24892) load
+I (141) esp_image: segment 3: paddr=00040020 vaddr=42000020 size=839e0h (539104) map
+I (238) esp_image: segment 4: paddr=000c3a08 vaddr=4037a13c size=0fd0ch ( 64780) load
+I (252) esp_image: segment 5: paddr=000d371c vaddr=50000000 size=00020h (    32) load
+I (261) boot: Loaded app from partition at offset 0x10000
+I (261) boot: Disabling RNG early entropy source...
+I (271) cpu_start: Multicore app
+I (280) cpu_start: Pro cpu start user code
+I (280) cpu_start: cpu freq: 160000000 Hz
+I (280) app_init: Application information:
+I (280) app_init: Project name:     motorsense
+I (284) app_init: App version:      1.0.0
+I (288) app_init: Compile time:     Sep 27 2026 16:27:55
+I (293) app_init: ELF file SHA256:  6cf7cc319...
+I (297) app_init: ESP-IDF:          v5.5.1
+I (301) efuse_init: Min chip rev:     v0.0
+I (305) efuse_init: Max chip rev:     v0.99
+I (309) efuse_init: Chip rev:         v0.2
+I (313) heap_init: Initializing. RAM available for dynamic allocation:
+I (319) heap_init: At 3FCA8510 len 00041200 (260 KiB): RAM
+I (324) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (329) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (335) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (341) spi_flash: detected chip: generic
+I (344) spi_flash: flash io: dio
+W (347) spi_flash: Detected size(8192k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (359) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (365) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (372) coexist: coex firmware version: b0bcc39
+I (390) coexist: coexist rom version e7ae62f
+I (391) main_task: Started on CPU0
+I (401) main_task: Calling app_main()
+I (401) BLE_UART: BUILD: Sep 27 2026 16:32:56
+I (571) SERIAL_CMD: USB serial command console started
+READY
+I (571) BLE_INIT: BT controller compile version [2edb0b0]
+I (571) BLE_INIT: Using main XTAL as clock source
+I (581) BLE_INIT: Feature Config, ADV:1, BLE_50:1, DTM:1, SCAN:1, CCA:0, SMP:1, CONNECT:1
+I (581) BLE_INIT: Bluetooth MAC: 90:70:69:1c:48:56
+I (591) phy_init: phy_version 701,f4f1da3a,Mar  3 2025,15:50:10
+I (661) BLE_UART: GATTS_REG_EVT status=0 app_id=0
+W (661) BT_BTM: BTM_BleWriteAdvData, Partial data write into ADV
+I (661) BLE_UART: NUS GATT table created
+I (661) BLE_UART: DIS GATT table created
+I (671) BLE_UART: Advertising started
+I (671) quad_enc: enc=0 pos=0
+I (671) quad_enc: enc=1 pos=0
+I (671) quad_enc: Schmitt decode: enc0 GPIO11/12 1000 pairs/s; enc1 GPIO9/10 DMA 40000 pairs/s; axis_threshold=2800 +/-100 motor_threshold=3600 +/-100
+I (691) BLE_UART: BLE UART started (device name: MotorSense-YAW-4856)
+I (691) main_task: Returned from app_main()
+DEVICE role=YAW firmware=1.0.0 hardware=unknown project=motorsense
+CALIBRATION counts_rev=11840 counts_degree=32.888888889 degrees_count=0.0304054054 min=-180.000 max=180.000 zero=0.000
+CONFIG motor_invert=0 axis_invert=0 encoder_motor_invert=1 motor_encoder_enabled=0 motor_center=3600 motor_hysteresis=100 pending_reboot=0
+OTA active=0 received=0 size=0 running=ota_0
+STATUS
+BLE: joinable=1 connected=0 notify=0 conn_id=0
+MOTOR: dir=S duty=100%
+AXIS: state=IDLE target=0 position=0 duty=0 corrections=0
+USER_LED: mode=SOLID rgb=0 10 0
+ENCODER0: mode=ADC_SCHMITT gpio_a=11 gpio_b=12 pos=0
+ENCODER1: mode=ADC_DMA_SCHMITT gpio_a=9 gpio_b=10 pos=0
+INDICATOR: state=JOINABLE activity=1 (1000ms)
+ESP: uptime=14s heap_free=191740 heap_min=182980 reset_reason=3
+ESP: idf=v5.5.1 chip_model=9 cores=2 rev=2 mac_sta=90:70:69:1C:48:54
+MOTOR_STATS pairs=0 rate=40000 overflows=0 errors=0 bad_order=0 forward=0 reverse=0 invalid=0 pos=0 ready=0
+MOTOR_LAST_INVALID time_us=0 before=0,0 after=0,0
+AXIS_STATS samples=15624 errors=0 forward=0 reverse=0 invalid=0 pos=0
+ENCODER STATS: axis_samples=15611 dma_overflows=0
