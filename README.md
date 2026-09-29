@@ -22,7 +22,7 @@ a BLE serial link — can drive the telescope.
 | **Web client** | [clients/web](clients/web) | `cd clients/web && npm install && npm run dev` (Chrome/Edge for Web Bluetooth) |
 | **Python tools** | [clients/python](clients/python) | `cd clients/python && uv run motor-sense-telescope` (also `ble-serial`, LX200/INDI/Stellarium bridges) |
 
-![MotorSense iOS app](clients/ios/ios_control_screenshot.png)
+<img src="clients/ios/ios_control_screenshot.png" alt="MotorSense iOS app" width="300" style="margin: auto">
 
 *iOS app: connect both controllers, read out yaw/pitch, drive each axis in
 selectable steps, align the encoders to the phone's compass/IMU, and update
