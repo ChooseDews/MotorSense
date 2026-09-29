@@ -1,4 +1,4 @@
-# Host tools (`local_tools/`)
+# Host tools (`clients/python/`)
 
 Python package managed with [uv](https://docs.astral.sh/uv/). All entry points run from this folder:
 
@@ -13,13 +13,13 @@ Python package managed with [uv](https://docs.astral.sh/uv/). All entry points r
 
 ## Telescope app
 
-`motor-sense-telescope` scans and connects both boards at once (`MotorSense Caboose-78` = yaw, `Caboose-158` = pitch) and sends `AXIS MOVE` commands, keeping the closed loop on the boards. It also exposes a local Unix socket (`~/Library/Application Support/MotorSense/telescope.sock`) that the INDI/LX200 bridges speak.
+`motor-sense-telescope` scans and connects both boards at once (`MotorSense-YAW-…` and `MotorSense-PITCH-…` — the boards advertise their role plus a MAC suffix) and sends `AXIS MOVE` commands, keeping the closed loop on the boards. It also exposes a local Unix socket (`~/Library/Application Support/MotorSense/telescope.sock`) that the INDI/LX200 bridges speak.
 
 The **External calibration** section compares settled encoder moves against the camera tracker's `telescope_angles.csv` (see [tracker.md](tracker.md)): it commands yaw/pitch sweeps, waits for each move to settle, and reports per-point plus RMS/max error.
 
 ## Calibration results
 
-Charts and captures from the encoder/calibration campaigns live in `local_tools/calibration/` (reports: `REPORT.md`, `ENCODER_DMA_REPORT.md`, `PITCH_ENCODER_REPORT.md`).
+Charts and captures from the encoder/calibration campaigns live in `tools/external_camera_validation/calibration/` (reports: `REPORT.md`, `ENCODER_DMA_REPORT.md`, `PITCH_ENCODER_REPORT.md`).
 
 ![Yaw calibration fit](images/yaw-calibration.png)
 
@@ -29,4 +29,4 @@ Charts and captures from the encoder/calibration campaigns live in `local_tools/
 
 ## iOS app
 
-`ios_app/MotorSense` is a SwiftUI app (CoreBluetooth) with per-axis calibration, RA/Dec GOTO using CoreLocation + telescope math, and a sky view. Open `MotorSense.xcodeproj` in Xcode and run on a device.
+`clients/ios/MotorSense` is a SwiftUI app (CoreBluetooth) with per-axis calibration, RA/Dec GOTO using CoreLocation + telescope math, phone-IMU alignment and a sky view. Open `MotorSense.xcodeproj` in Xcode and run on a device — see the [iOS README](../clients/ios/README.md).

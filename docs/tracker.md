@@ -1,4 +1,4 @@
-# Camera tracker (`camera_yaw_pitch_tracker/`)
+# Camera tracker (`tools/external_camera_validation/`)
 
 An independent way to measure the mount's true yaw and pitch: a webcam watches printed AprilTags and solves the pose from the camera image. No encoders involved — this is the ground truth used to validate closed-loop accuracy.
 
@@ -24,7 +24,7 @@ Tags 0 and 3 are treated as one rigid object: press **B** once with both visible
 ## Run
 
 ```sh
-cd camera_yaw_pitch_tracker
+cd tools/external_camera_validation
 .venv/bin/python telescope_tracker_dual_base_with_log.py
 ```
 

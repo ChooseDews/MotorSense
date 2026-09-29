@@ -7,18 +7,22 @@ transport or axis-specific build configuration.
 
 ## Build and initial migration
 
-Use ESP-IDF 5.5.1 and a board with at least 2 MB flash:
+Use ESP-IDF 5.5.x and a board with at least 2 MB flash:
 
 ```sh
-idf.py -B build-unified build
-idf.py -B build-unified -p PORT flash monitor
+idf.py -B build -D SDKCONFIG=sdkconfig.unified build
+idf.py -B build -p PORT flash monitor
 ```
 
-`CMakeLists.txt` sets firmware version `1.0.0`; change `PROJECT_VER` for releases.
-A clean build uses `sdkconfig.defaults` and a build-local generated sdkconfig,
-ignoring old top-level yaw/pitch sdkconfigs. Do not pass an old axis-specific
-SDKCONFIG. The build produces both `motorsense.bin` and
-`motorsense-v1.0.0.bin` (identical application bytes).
+**Always pass `-D SDKCONFIG=sdkconfig.unified`.** The tracked `firmware/sdkconfig`
+at the project root is a stale leftover (single-app partition table, OTA rollback
+disabled), so a plain `idf.py build` would silently use it. `sdkconfig.unified` is
+the current production config; the old `sdkconfig.pitch` / `sdkconfig.yaw-control`
+axis variants are legacy and unused. `CMakeLists.txt` sets firmware version
+`1.0.0`; change `PROJECT_VER` for releases. The build produces both
+`motorsense.bin` and `motorsense-v1.0.0.bin` (identical application bytes).
+The full build/flash/OTA reference lives in the
+[firmware README](../firmware/README.md).
 
 Existing factory-only boards need this **one wired migration**, including the
 bootloader, partition table, application and initial OTA metadata. Do not send
@@ -98,7 +102,7 @@ Install `bleak` in your Python environment, then upload the **same application
 file** to either board (address is a peripheral UUID on macOS):
 
 ```sh
-python local_tools/ble_ota.py ADDRESS build-unified/motorsense-v1.0.0.bin
+python tools/ble_ota.py ADDRESS build/motorsense-v1.0.0.bin
 ```
 
 The uploader subscribes to NUS TX
@@ -166,7 +170,7 @@ Reference: [ESP-IDF 5.5 OTA and rollback documentation](https://docs.espressif.c
 
 ```sh
 python3 tests/firmware/test_host.py
-idf.py -B build-unified build
+idf.py -B build -D SDKCONFIG=sdkconfig.unified build
 ```
 
 Host tests compile the actual configuration and OTA modules against injected

@@ -1,15 +1,18 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AxisStatus from './components/AxisStatus.vue'
 import CalibrationPanel from './components/CalibrationPanel.vue'
 import DiagnosticsPanel from './components/DiagnosticsPanel.vue'
 import FirmwareUpdate from './components/FirmwareUpdate.vue'
 import MountControl from './components/MountControl.vue'
+import SerialFlasher from './components/SerialFlasher.vue'
 import SkyControl from './components/SkyControl.vue'
 import { useMountStore } from './stores/ble'
 
 const store = useMountStore()
+const serialFlashing = ref(false)
 const updatingFirmware = computed(() => store.axes.yaw.otaUploading || store.axes.pitch.otaUploading)
+const maintenanceActive = computed(() => updatingFirmware.value || serialFlashing.value)
 const status = computed(() => {
   if (store.mountHealthy) return { label: 'Mount online', className: 'good' }
   if (store.mountConnected && store.telemetryStale) return { label: 'Mount online · telemetry stale', className: 'warn' }
@@ -50,7 +53,7 @@ onMounted(() => store.autoConnectKnownDevices())
         <template v-else>Connect yaw (<strong>-78</strong>) and pitch (<strong>-158</strong>). Previously approved boards reconnect automatically.</template>
       </p>
 
-      <div v-if="updatingFirmware" class="connection-gate">
+      <div v-if="maintenanceActive" class="connection-gate">
         Firmware update in progress. Mount controls are temporarily unavailable.
       </div>
       <div v-else-if="!store.mountConnected" class="connection-gate">
@@ -62,7 +65,8 @@ onMounted(() => store.autoConnectKnownDevices())
         <CalibrationPanel />
       </template>
       <FirmwareUpdate v-if="store.axes.yaw.connected || store.axes.pitch.connected" />
-      <DiagnosticsPanel v-if="!updatingFirmware && (store.axes.yaw.connected || store.axes.pitch.connected)" />
+      <SerialFlasher @flashing="serialFlashing = $event" />
+      <DiagnosticsPanel v-if="!maintenanceActive && (store.axes.yaw.connected || store.axes.pitch.connected)" />
 
       <section class="panel about" aria-labelledby="about-title">
         <div class="about-lead">

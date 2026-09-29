@@ -4,6 +4,7 @@ import { altAzForObject, altAzForRaDec } from '../src/lib/astronomy.js'
 import { axisForDeviceName } from '../src/lib/deviceRoles.js'
 import { altAzFromMount, angleFromTicks, mountFromAltAz, shortestDelta, splitMove, wrapDegrees } from '../src/lib/mountMath.js'
 import { buildOtaFrame, bytesToHex } from '../src/lib/ota.js'
+import { formatFlashAddress, inferSerialImageType, validateSerialImage } from '../src/lib/serialFlash.js'
 
 test('normalizes yaw and chooses the shortest path', () => {
   assert.equal(wrapDegrees(-10), 350)
@@ -22,6 +23,17 @@ test('builds MotorSense OTA binary frames with little-endian metadata', () => {
   assert.deepEqual([...frame], [0x4d, 0x53, 0x78, 0x56, 0x34, 0x12, 3, 0, 1, 0xaa, 0xbb, 0xcc])
   assert.equal(bytesToHex(new Uint8Array([0, 15, 255])), '000fff')
   assert.throws(() => buildOtaFrame(0, new Uint8Array(501)), /Invalid OTA frame payload/)
+})
+
+test('selects and validates serial firmware image layouts', () => {
+  assert.equal(inferSerialImageType('motorsense-yaw-flash-all.bin'), 'full')
+  assert.equal(inferSerialImageType('merged-binary.bin'), 'full')
+  assert.equal(inferSerialImageType('motorsense.bin'), 'app')
+  assert.equal(formatFlashAddress('full'), '0x0')
+  assert.equal(formatFlashAddress('app'), '0x10000')
+  assert.equal(validateSerialImage({ name: 'motorsense.bin', size: 100 }, 'app'), '')
+  assert.match(validateSerialImage({ name: 'motorsense.txt', size: 100 }, 'app'), /\.bin/)
+  assert.match(validateSerialImage({ name: 'motorsense.bin', size: 0xf0001 }, 'app'), /too large/)
 })
 
 test('converts encoder ticks using a persisted reference', () => {

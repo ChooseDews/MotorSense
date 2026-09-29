@@ -38,14 +38,12 @@ This produces, in `build-unified/`:
 | File | Purpose |
 | --- | --- |
 | `sdkconfig.defaults` | Minimal source-of-truth defaults (BT, ESP32-S3, 2 MB flash, custom OTA partition table, rollback). Used when `sdkconfig` is (re)generated. |
-| `sdkconfig.unified` | The current, full production config. This is what CI and the docs build with. |
-| `sdkconfig.pitch`, `sdkconfig.yaw-control` | Legacy per-device compile-time variants, kept for reference. |
+| `sdkconfig.unified` | The current, full production config. The one firmware image everyone builds — this is what CI and the docs use. |
+| `sdkconfig.pitch`, `sdkconfig.yaw-control` | Legacy leftovers from when the axis role was compile-time. Not built by CI; kept only for reference and safe to delete. |
 
-Per-device settings (axis role `YAW`/`PITCH`, calibration, motor centre,
-hysteresis, inversions) are configured at **runtime** and stored in NVS via the
-console/BLE commands (`DEVICE ROLE PITCH`, `DEVICE SET counts_rev 11840`, …),
-so one firmware image serves every device — separate builds are no longer
-needed for that.
+There is intentionally only **one** firmware image: the axis role (`YAW` or
+`PITCH`), calibration and motor settings are runtime settings stored in NVS —
+see [Setting a device to YAW or PITCH mode](#setting-a-device-to-yaw-or-pitch-mode).
 
 ### Changing settings
 
@@ -60,6 +58,38 @@ To start over from a clean tree:
 ```bash
 idf.py -B build-unified fullclean
 ```
+
+## Setting a device to YAW or PITCH mode
+
+The axis role is a runtime setting in NVS — the same firmware image works for
+both axes. Connect with a serial terminal at 115200 baud (or over the BLE UART
+service, advertising as `MotorSense-<ROLE>-XXXX`) and run:
+
+```
+DEVICE ROLE PITCH        # or YAW — saved to NVS immediately
+DEVICE REBOOT            # the role applies after reboot
+```
+
+`DEVICE INFO` shows the current role, firmware version and a `pending_reboot`
+flag; `CALIBRATION` shows the stored axis calibration.
+
+Other per-device settings are set the same way and also apply on reboot:
+
+```
+DEVICE SET counts_rev 11840      # encoder counts per revolution
+DEVICE SET min_deg -45           # travel limits
+DEVICE SET max_deg 45
+DEVICE SET zero_deg 0            # axis zero position
+DEVICE SET motor_center 3600     # motor centre / deadband PWM
+DEVICE SET motor_hysteresis 100
+DEVICE SET motor_invert 0        # direction inversion flags (0|1)
+DEVICE SET axis_invert 0
+DEVICE SET encoder_motor_invert 0
+DEVICE SET motor_encoder_enabled 0
+```
+
+Setting commands are rejected while the motor is moving (`ERR motor busy`) —
+send `AXIS STOP` first.
 
 ## Flashing
 
@@ -148,11 +178,12 @@ everything; the main groups are:
 
 ## Continuous Integration
 
-`.github/workflows/build-firmware.yml` builds every sdkconfig variant
-(`unified`, `pitch`, `yaw-control`) with the official `espressif/idf:v5.5.1`
-Docker image on pushes/PRs that touch `firmware/`, and on manual
-`workflow_dispatch`. Each variant uploads a `firmware-<variant>` artifact with
-the app binary, the ELF, and the merged flash-all image.
+`.github/workflows/build-firmware.yml` builds the firmware from
+`sdkconfig.unified` with the official `espressif/idf:v5.5.1` Docker image on
+pushes/PRs that touch `firmware/`, and on manual `workflow_dispatch`. It
+uploads a single `motorsense-firmware` artifact containing the app binary, the
+ELF (debug symbols for decoding crash backtraces — never flashed), and the
+merged flash-all image.
 
 ## Source layout (`main/`)
 

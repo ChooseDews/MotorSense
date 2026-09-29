@@ -1,64 +1,83 @@
 # MotorSense
 
-A closed-loop alt-az telescope mount built from two ESP32-S3 boards — one per axis — with quadrature-encoder feedback, plus the web client, Python host tools, iOS app, and a camera-based angle tracker that surrounds it.
+[![Firmware Build](https://github.com/ChooseDews/MotorSense/actions/workflows/build-firmware.yml/badge.svg)](https://github.com/ChooseDews/MotorSense/actions/workflows/build-firmware.yml)
 
-Everything talks to the boards over BLE using simple newline-terminated commands (`AXIS MOVE ...`), so any language or app can drive the mount.
+A closed-loop motor-control retrofit for the **Orion SkyQuest XTg** GoTo
+Dobsonian: one ESP32-S3 board per axis (yaw + pitch) that drives the mount
+motor and reads a quadrature encoder for closed-loop positioning. The boards
+speak a simple newline-terminated command console over BLE and USB serial
+(`AXIS MOVE 12.5`, `MOTOR F 70`), so the apps below — or anything that can open
+a BLE serial link — can drive the telescope.
 
-![Camera yaw/pitch tracker measuring the mount](docs/images/tracker-yaw-pitch.jpg)
-
-*The AprilTag tracker measuring yaw/pitch of the mounted telescope (ids 0, 2, 3 on the mount base, scope tag on top).*
-
-## What's in this repo
-
-| Folder | What it is |
+| The board | In the telescope |
 | --- | --- |
-| `main/` | ESP-IDF firmware: BLE serial, closed-loop axis motion, encoder decoding, ADC, persistent board roles, BLE OTA |
-| `client/` | Vue 3 + Vite web app (Web Bluetooth): control, encoder readout, logging, 3-D view |
-| `local_tools/` | Python tools (uv): BLE serial CLI/GUI, telescope control app, LX200/INDI bridges, calibration data |
-| `camera_yaw_pitch_tracker/` | OpenCV AprilTag tracker that measures true yaw/pitch for calibration |
-| `docs/` | Architecture, per-component docs and images |
+| ![MotorSense V1 board, top side](board/images/top_v1.jpeg) | ![Board installed in the mount](board/images/connected_to_telescope.jpg) |
+| *V1 controller board — see [board/](board) for schematic, GPIO map and ICs.* | *Board installed in the mount base, wired to the axis motor and encoder.* |
 
-## Architecture
+## Apps
 
-![Architecture](docs/images/architecture.svg)
+| App | Folder | Run / build |
+| --- | --- | --- |
+| **iOS** | [clients/ios](clients/ios) | Open `MotorSense.xcodeproj` in Xcode and run on a phone ([README](clients/ios/README.md) — incl. BLE firmware updates) |
+| **Web client** | [clients/web](clients/web) | `cd clients/web && npm install && npm run dev` (Chrome/Edge for Web Bluetooth) |
+| **Python tools** | [clients/python](clients/python) | `cd clients/python && uv run motor-sense-telescope` (also `ble-serial`, LX200/INDI/Stellarium bridges) |
 
-See [docs/architecture.md](docs/architecture.md) for details.
+![MotorSense iOS app](clients/ios/ios_control_screenshot.png)
 
-## Quick start
+*iOS app: connect both controllers, read out yaw/pitch, drive each axis in
+selectable steps, align the encoders to the phone's compass/IMU, and update
+firmware over BLE.*
 
-**Firmware** (ESP-IDF 5.x, target ESP32-S3):
+## Firmware
 
-```sh
-idf.py set-target esp32s3
-idf.py menuconfig   # optional
-idf.py build flash monitor
-```
-
-**Web client** (Chrome/Edge required for Web Bluetooth):
-
-```sh
-cd client && npm install && npm run dev
-```
-
-**Host tools** (any BLE-capable machine):
+ESP-IDF v5.5 targeting the ESP32-S3. One image serves every board — the axis
+role (`YAW`/`PITCH`) and calibration are runtime settings in NVS. Full build and
+flashing guide in [firmware/README.md](firmware/README.md); in short:
 
 ```sh
-cd local_tools && uv run motor-sense-telescope   # full control GUI
-uv run ble-serial                                # interactive BLE console
+. ~/esp/esp-idf/export.sh
+idf.py -B build -D SDKCONFIG=sdkconfig.unified build
+idf.py -B build -p <port> flash monitor
 ```
 
-**Camera tracker** (macOS, webcam + printed AprilTags):
+> **Always pass `-D SDKCONFIG=sdkconfig.unified`.** The `firmware/sdkconfig` at
+> the repo root is a stale leftover (single-app partition table, OTA rollback
+> disabled), so a plain `idf.py build` would silently produce an image without
+> working OTA.
+
+**Full flash** (blank board or recovery) — program everything at once with the
+merged image from the CI artifact, or from your own build:
 
 ```sh
-cd camera_yaw_pitch_tracker && .venv/bin/python telescope_tracker_dual_base_with_log.py
+idf.py -B build merge-bin     # produces build/merged-binary.bin
+esptool.py --chip esp32s3 -p <port> write_flash 0x0 build/merged-binary.bin
 ```
 
-**iOS app**: open `local_tools/ios_app/MotorSense/MotorSense.xcodeproj` in Xcode and run.
+or image by image:
+
+```sh
+esptool.py --chip esp32s3 -p <port> --baud 921600 write_flash \
+  0x0      build/bootloader/bootloader.bin \
+  0x8000   build/partition_table/partition-table.bin \
+  0x10000  build/motorsense.bin \
+  0x1f0000 build/ota_data_initial.bin
+```
+
+## Repository map
+
+| Path | What it is |
+| --- | --- |
+| `firmware/` | ESP-IDF firmware: BLE console, closed-loop axis motion, encoder decoding, ADC, OTA |
+| `clients/ios/` | iOS control app (Swift/Xcode) |
+| `clients/web/` | Vue 3 + Vite web client (Web Bluetooth) |
+| `clients/python/` | Python CLI/GUI and telescope app, LX200/INDI bridges (uv) |
+| `board/` | V1 controller board: EasyEDA project, photos, GPIO map |
+| `docs/` | Per-component docs and images |
+| `tools/`, `tests/` | Host utilities (BLE OTA, camera validation) and firmware tests |
 
 ## Docs
 
+- [Firmware](firmware/README.md) — build, flash methods, OTA, console commands
+- [Board](board/README.md) — schematic, photos, GPIO map, key ICs
 - [Architecture](docs/architecture.md) — how the pieces fit together
-- [Firmware](docs/firmware.md) — modules, build, serial command set
-- [Web client](docs/client.md)
-- [Camera tracker](docs/tracker.md) — AprilTag rig and calibration workflow
-- [Host tools](docs/tools.md) — telescope app, LX200/INDI, calibration results
+- [Web client](docs/client.md), [Python tools](docs/tools.md), [Camera tracker](docs/tracker.md), [iOS app](clients/ios/README.md)

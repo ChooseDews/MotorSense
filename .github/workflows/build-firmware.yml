@@ -1,12 +1,15 @@
-# Builds the MotorSense ESP32-S3 firmware for every sdkconfig variant.
+# Builds the MotorSense ESP32-S3 firmware from sdkconfig.unified.
 #
-# Each variant gets its own build directory and its own artifact containing:
-#   - the app binary (motorsense-v1.0.0.bin)  — for OTA or app-only flashing
-#   - the merged flash-all image               — one file that covers bootloader,
-#                                                partition table, otadata and app
+# The artifact contains:
+#   - the app binary (motorsense-v1.0.0.bin) — for OTA or app-only flashing
+#   - the merged flash-all image             — one file that covers bootloader,
+#                                              partition table, otadata and app
 #   - the ELF (for addr2line / symbol decoding)
 #
-# NOTE: builds always pin SDKCONFIG to a named variant. The repo-root
+# One image serves every device: axis role (YAW/PITCH) and calibration are
+# runtime settings stored in NVS (see firmware/README.md).
+#
+# NOTE: builds always pin SDKCONFIG to sdkconfig.unified. The repo-root
 # firmware/sdkconfig is a stale leftover and must not be used.
 
 name: Firmware Build
@@ -30,41 +33,34 @@ env:
 
 jobs:
   build:
-    name: Build ${{ matrix.sdkconfig }}
+    name: Build motorsense (esp32s3)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        sdkconfig: [unified, pitch, yaw-control]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build firmware (${{ matrix.sdkconfig }})
+      - name: Build firmware
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: ${{ env.IDF_VERSION }}
           target: ${{ env.TARGET }}
           path: firmware
           command: >
-            idf.py -B build-${{ matrix.sdkconfig }}
-            -D SDKCONFIG=sdkconfig.${{ matrix.sdkconfig }}
-            build &&
-            idf.py -B build-${{ matrix.sdkconfig }} merge-bin
+            idf.py -B build -D SDKCONFIG=sdkconfig.unified build &&
+            idf.py -B build merge-bin
 
       - name: Collect binaries
         run: |
           mkdir -p artifacts
-          b="firmware/build-${{ matrix.sdkconfig }}"
-          cp "$b/motorsense-v${PROJECT_VER}.bin"  "artifacts/motorsense-${{ matrix.sdkconfig }}-v${PROJECT_VER}.bin"
-          cp "$b/motorsense.elf"                  "artifacts/motorsense-${{ matrix.sdkconfig }}-v${PROJECT_VER}.elf"
-          cp "$b/merged-binary.bin"               "artifacts/motorsense-${{ matrix.sdkconfig }}-flash-all.bin"
+          cp firmware/build/motorsense-v${PROJECT_VER}.bin  artifacts/
+          cp firmware/build/motorsense.elf                  artifacts/
+          cp firmware/build/merged-binary.bin               artifacts/motorsense-flash-all.bin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ matrix.sdkconfig }}
+          name: motorsense-firmware
           path: artifacts/
           retention-days: 30
           if-no-files-found: error

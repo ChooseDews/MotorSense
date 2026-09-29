@@ -12,12 +12,12 @@ npm run dev
 
 Open the localhost URL in Chrome or Edge. Web Bluetooth requires localhost or HTTPS and is not available in Safari or Firefox.
 
-On first use, choose the controllers separately because browsers require a user gesture for every Bluetooth device picker:
+On first use, choose the controllers separately because browsers require a user gesture for every Bluetooth device picker. The boards advertise `MotorSense-<ROLE>-XXXX` — role plus a MAC suffix:
 
-- **Yaw:** `MotorSense Caboose-78`
-- **Pitch:** `MotorSense Caboose-158`
+- **Yaw:** `MotorSense-YAW-…`
+- **Pitch:** `MotorSense-PITCH-…`
 
-On later visits, Chromium's `navigator.bluetooth.getDevices()` API returns the previously authorized boards. The app identifies them by those suffixes and reconnects yaw and pitch automatically, matching the Python client's selection behavior as closely as the browser security model allows.
+On later visits, Chromium's `navigator.bluetooth.getDevices()` API returns the previously authorized boards. The app identifies each board by its name suffix (see `src/lib/deviceRoles.js`) and reconnects yaw and pitch automatically, matching the Python client's selection behavior as closely as the browser security model allows.
 
 ## Features
 
@@ -31,6 +31,7 @@ On later visits, Chromium's `navigator.bluetooth.getDevices()` API returns the p
 - JSON configuration import/export (configuration is also saved in local storage)
 - External camera CSV reference sweeps with result export
 - Browser-based `.bin` firmware updates using the board's verified BLE OTA protocol
+- USB serial recovery flashing from a merged image, with optional app-only flashing
 - Raw per-board terminal, event log, telemetry capture, and CSV export
 
 The astronomy calculations use `astronomy-engine` locally in the browser. No network service is needed after the app loads.
@@ -45,9 +46,11 @@ The Python-only Unix socket, LX200/INDI bridge, and launching a local Stellarium
 
 ### Firmware updates
 
-Connect at least one controller and open **Firmware → Update controller**. Select yaw or pitch, choose the MotorSense application `.bin`, and start the upload. Do not choose a merged `flash-all` image. The browser calculates SHA-256, streams the same `MS` binary frames and eight-frame acknowledgement windows as `local_tools/ble_ota.py`, asks the board to verify the image, and then waits for its reboot. Movement polling is suspended during transfer and failures trigger a best-effort `OTA ABORT`.
+Connect at least one controller and open **Firmware → Update controller**. Select yaw or pitch, choose the MotorSense application `.bin`, and start the upload. Do not choose a merged `flash-all` image. The browser calculates SHA-256, streams the same `MS` binary frames and eight-frame acknowledgement windows as `tools/ble_ota.py`, asks the board to verify the image, and then waits for its reboot. Movement polling is suspended during transfer and failures trigger a best-effort `OTA ABORT`.
 
 Keep the page open and the controller powered throughout the update. Reconnect after about 15 seconds, verify the device information and calibration, and re-zero before movement. Firmware hashes detect corruption but do not authenticate the publisher, so only install images you trust.
+
+For a wired install or recovery, open **USB Serial → Flash controller**. A merged `*-flash-all.bin` is written at `0x0` and is the recommended option; it replaces the complete flash layout and saved settings. An application-only image can be written at `0x10000`, but it only updates OTA slot 0 and may not be the slot currently selected by the bootloader. The serial flasher is available without a Bluetooth connection and uses the ESP32-S3 ROM loader through Web Serial. If automatic download mode fails, hold **BOOT**, tap **EN/RST**, release **BOOT**, and retry.
 
 ## Verify
 
