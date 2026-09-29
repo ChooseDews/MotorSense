@@ -1,0 +1,70 @@
+# Builds the MotorSense ESP32-S3 firmware for every sdkconfig variant.
+#
+# Each variant gets its own build directory and its own artifact containing:
+#   - the app binary (motorsense-v1.0.0.bin)  — for OTA or app-only flashing
+#   - the merged flash-all image               — one file that covers bootloader,
+#                                                partition table, otadata and app
+#   - the ELF (for addr2line / symbol decoding)
+#
+# NOTE: builds always pin SDKCONFIG to a named variant. The repo-root
+# firmware/sdkconfig is a stale leftover and must not be used.
+
+name: Firmware Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/build-firmware.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/build-firmware.yml"
+  workflow_dispatch:
+
+env:
+  IDF_VERSION: v5.5.1
+  TARGET: esp32s3
+  PROJECT_VER: 1.0.0
+
+jobs:
+  build:
+    name: Build ${{ matrix.sdkconfig }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdkconfig: [unified, pitch, yaw-control]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build firmware (${{ matrix.sdkconfig }})
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ env.IDF_VERSION }}
+          target: ${{ env.TARGET }}
+          path: firmware
+          command: >
+            idf.py -B build-${{ matrix.sdkconfig }}
+            -D SDKCONFIG=sdkconfig.${{ matrix.sdkconfig }}
+            build &&
+            idf.py -B build-${{ matrix.sdkconfig }} merge-bin
+
+      - name: Collect binaries
+        run: |
+          mkdir -p artifacts
+          b="firmware/build-${{ matrix.sdkconfig }}"
+          cp "$b/motorsense-v${PROJECT_VER}.bin"  "artifacts/motorsense-${{ matrix.sdkconfig }}-v${PROJECT_VER}.bin"
+          cp "$b/motorsense.elf"                  "artifacts/motorsense-${{ matrix.sdkconfig }}-v${PROJECT_VER}.elf"
+          cp "$b/merged-binary.bin"               "artifacts/motorsense-${{ matrix.sdkconfig }}-flash-all.bin"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.sdkconfig }}
+          path: artifacts/
+          retention-days: 30
+          if-no-files-found: error
